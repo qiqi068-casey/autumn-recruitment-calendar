@@ -117,11 +117,36 @@ export default function Home() {
   const calendarMonths = useMemo(() => Array.from({ length: 96 }, (_, index) => new Date(2024, index, 1)), []);
   const calendarScrollRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  function goToMonth(targetMonth: Date, behavior: ScrollBehavior = "smooth") {
+    setMonth(new Date(targetMonth.getFullYear(), targetMonth.getMonth(), 1));
     const container = calendarScrollRef.current;
-    const target = container?.querySelector<HTMLElement>(`[data-month="${month.getFullYear()}-${pad(month.getMonth() + 1)}"]`);
-    if (container && target) container.scrollTo({ top: target.offsetTop, behavior: "smooth" });
-  }, [month]);
+    const target = container?.querySelector<HTMLElement>(`[data-month="${targetMonth.getFullYear()}-${pad(targetMonth.getMonth() + 1)}"]`);
+    if (container && target) container.scrollTo({ top: target.offsetTop, behavior });
+  }
+
+  useEffect(() => {
+    requestAnimationFrame(() => goToMonth(new Date(), "auto"));
+  }, []);
+
+  function syncMonthFromScroll() {
+    const container = calendarScrollRef.current;
+    if (!container) return;
+    const viewport = container.getBoundingClientRect();
+    let visibleMonth: HTMLElement | null = null;
+    let greatestVisibleHeight = 0;
+    container.querySelectorAll<HTMLElement>(".calendar-month").forEach((section) => {
+      const bounds = section.getBoundingClientRect();
+      const visibleHeight = Math.max(0, Math.min(bounds.bottom, viewport.bottom) - Math.max(bounds.top, viewport.top));
+      if (visibleHeight > greatestVisibleHeight) {
+        greatestVisibleHeight = visibleHeight;
+        visibleMonth = section;
+      }
+    });
+    const value = visibleMonth?.dataset.month;
+    if (!value) return;
+    const [year, monthNumber] = value.split("-").map(Number);
+    if (year !== month.getFullYear() || monthNumber - 1 !== month.getMonth()) setMonth(new Date(year, monthNumber - 1, 1));
+  }
 
   const weekStartDate = new Date();
   weekStartDate.setDate(weekStartDate.getDate() - weekStartDate.getDay());
@@ -235,7 +260,7 @@ export default function Home() {
         <div className="calendar-card">
           <div className="calendar-toolbar">
             <div className="month-switcher">
-              <button aria-label="上个月" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}>‹</button>
+              <button aria-label="上个月" onClick={() => goToMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}>‹</button>
               <label className="month-picker" title="选择月份">
                 <span>{monthLabel}</span>
                 <input
@@ -245,12 +270,12 @@ export default function Home() {
                   onChange={(event) => {
                     if (!event.target.value) return;
                     const [year, monthNumber] = event.target.value.split("-").map(Number);
-                    setMonth(new Date(year, monthNumber - 1, 1));
+                    goToMonth(new Date(year, monthNumber - 1, 1));
                   }}
                 />
               </label>
-              <button aria-label="下个月" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}>›</button>
-              <button className="today-btn" onClick={() => { const d = new Date(); setMonth(new Date(d.getFullYear(), d.getMonth(), 1)); setSelectedDate(todayKey); }}>今天</button>
+              <button aria-label="下个月" onClick={() => goToMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}>›</button>
+              <button className="today-btn" onClick={() => { goToMonth(new Date()); setSelectedDate(todayKey); }}>今天</button>
             </div>
             <div className="filters">
               {(["all", "deadline", "assessment", "interview"] as const).map((item) => (
@@ -260,7 +285,8 @@ export default function Home() {
               ))}
             </div>
           </div>
-          <div className="calendar-scroll continuous" ref={calendarScrollRef}>
+          <div className="week-row fixed-week-row">{["一", "二", "三", "四", "五", "六", "日"].map((d, index) => <span key={d} className={index >= 5 ? "weekend" : ""}>周{d}</span>)}</div>
+          <div className="calendar-scroll continuous" ref={calendarScrollRef} onScroll={syncMonthFromScroll}>
             {calendarMonths.map((calendarMonth) => {
               const year = calendarMonth.getFullYear();
               const monthIndex = calendarMonth.getMonth();
@@ -270,8 +296,6 @@ export default function Home() {
               while (cells.length % 7) cells.push(null);
               const monthKey = `${year}-${pad(monthIndex + 1)}`;
               return <section className="calendar-month" data-month={monthKey} key={monthKey}>
-                <h3>{year}年 {monthIndex + 1}月</h3>
-                <div className="week-row">{["一", "二", "三", "四", "五", "六", "日"].map((d, index) => <span key={d} className={index >= 5 ? "weekend" : ""}>周{d}</span>)}</div>
                 <div className="calendar-grid">
                   {cells.map((date, index) => {
                     if (!date) return <span className="day-cell blank" aria-hidden="true" key={`blank-${index}`} />;
