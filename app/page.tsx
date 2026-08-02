@@ -72,6 +72,7 @@ export default function Home() {
   const [hydrated, setHydrated] = useState(false);
   const [memo, setMemo] = useState("");
   const [confirmMemoClear, setConfirmMemoClear] = useState(false);
+  const [confirmEventDelete, setConfirmEventDelete] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -198,6 +199,7 @@ export default function Home() {
   function removeEvent() {
     if (!editingId) return;
     setEvents((all) => all.filter((e) => e.id !== editingId));
+    setConfirmEventDelete(false);
     setModalOpen(false);
   }
 
@@ -221,6 +223,7 @@ export default function Home() {
       if (priority !== 0) return priority;
       return (a.time || "99:99").localeCompare(b.time || "99:99");
     });
+  const selectedDayTotal = events.filter((event) => event.date === selectedDate).length;
   const monthLabel = `${month.getFullYear()}年 ${month.getMonth() + 1}月`;
 
   return (
@@ -324,7 +327,7 @@ export default function Home() {
         </div>
 
         <aside className="side-panel">
-          <div className="side-heading"><div><p>{new Date(`${selectedDate}T12:00:00`).toLocaleDateString("zh-CN", { month: "long", day: "numeric", weekday: "short" })}</p><h2>当日安排</h2></div><button onClick={() => openCreate(selectedDate)} aria-label="添加当天安排">＋</button></div>
+          <div className="side-heading"><div><p>{new Date(`${selectedDate}T12:00:00`).toLocaleDateString("zh-CN", { month: "long", day: "numeric", weekday: "short" })}</p><h2>当日安排（{selectedDayTotal}）</h2></div><button onClick={() => openCreate(selectedDate)} aria-label="添加当天安排">＋</button></div>
           <div className="selected-list">
             {selectedEvents.length ? selectedEvents.map((event) => (
               <div className={`agenda-item ${event.status === "done" ? "completed" : ""}`} key={event.id}>
@@ -349,16 +352,15 @@ export default function Home() {
       {modalOpen && (
         <div className="modal-backdrop" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) setModalOpen(false); }}>
           <form className="modal" onSubmit={saveEvent} role="dialog" aria-modal="true" aria-labelledby="modal-title">
-            <div className="modal-head"><div><p>{editingId ? "更新进展" : "记录新机会"}</p><h2 id="modal-title">{editingId ? "编辑秋招安排" : "添加秋招安排"}</h2></div><button type="button" aria-label="关闭弹窗" onClick={() => setModalOpen(false)}>×</button></div>
+            <div className="modal-head"><div>{!editingId && <p>记录新机会</p>}<h2 id="modal-title">{editingId ? "更新进展" : "添加秋招安排"}</h2></div><button type="button" aria-label="关闭弹窗" onClick={() => setModalOpen(false)}>×</button></div>
             <div className="form-grid">
               <label><span>公司名称 *</span><input autoFocus required value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} placeholder="例如：腾讯" /></label>
               <label><span>岗位名称 *</span><input required value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} placeholder="例如：产品经理" /></label>
-              <label><span>日期 *</span><input type="date" required value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></label>
-              <label><span>具体时间</span><span className="time-selects"><select aria-label="小时" value={form.time?.split(":")[0] ?? ""} onChange={(e) => updateTime("hour", e.target.value)}><option value="">小时</option>{Array.from({ length: 24 }, (_, hour) => pad(hour)).map((hour) => <option key={hour} value={hour}>{hour} 时</option>)}</select><b>:</b><select aria-label="分钟" value={form.time?.split(":")[1] ?? "00"} disabled={!form.time} onChange={(e) => updateTime("minute", e.target.value)}>{["00", "15", "30", "45"].map((minute) => <option key={minute} value={minute}>{minute} 分</option>)}</select></span></label>
-              <label><span>安排类型</span><select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as EventType })}>{Object.entries(typeMeta).map(([key, meta]) => <option key={key} value={key}>{meta.label}</option>)}</select></label>
-              <label className="full"><span>备注</span><textarea rows={3} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder="面试轮次、测评链接、需要准备的内容……" /></label>
+              <div className="date-time-group"><label><span>日期 *</span><input type="date" required value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></label><label className="compact-time"><span>具体时间（选填）</span><span className="time-selects"><select aria-label="小时" value={form.time?.split(":")[0] ?? ""} onChange={(e) => updateTime("hour", e.target.value)}><option value="">时</option>{Array.from({ length: 24 }, (_, hour) => pad(hour)).map((hour) => <option key={hour} value={hour}>{hour}</option>)}</select><b>:</b><select aria-label="分钟" value={form.time?.split(":")[1] ?? "00"} disabled={!form.time} onChange={(e) => updateTime("minute", e.target.value)}>{["00", "15", "30", "45"].map((minute) => <option key={minute} value={minute}>{minute}</option>)}</select></span></label></div>
+              <label><span>进度</span><select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as EventType })}>{Object.entries(typeMeta).map(([key, meta]) => <option key={key} value={key}>{meta.label}</option>)}</select></label>
+              <label className="full"><span>备注</span><textarea rows={5} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder="面试轮次、测评链接、需要准备的内容……" /></label>
             </div>
-            <div className="modal-actions">{editingId && <button type="button" className="danger" onClick={removeEvent}>删除</button>}<span /><button type="button" className="secondary" onClick={() => setModalOpen(false)}>取消</button><button className="primary" type="submit">保存安排</button></div>
+            <div className="modal-actions">{editingId && <button type="button" className="danger" onClick={() => setConfirmEventDelete(true)}>删除</button>}<span /><button type="button" className="secondary" onClick={() => setModalOpen(false)}>取消</button><button className="primary" type="submit">保存</button></div>
           </form>
         </div>
       )}
@@ -370,6 +372,17 @@ export default function Home() {
             <h2 id="confirm-title">确认清空备忘？</h2>
             <p id="confirm-description">清空后无法恢复，已记录的备忘内容将全部删除。</p>
             <div><button className="secondary" type="button" onClick={() => setConfirmMemoClear(false)}>取消</button><button className="confirm-danger" type="button" onClick={() => { setMemo(""); setConfirmMemoClear(false); }}>确认清空</button></div>
+          </div>
+        </div>
+      )}
+
+      {confirmEventDelete && (
+        <div className="confirm-backdrop" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) setConfirmEventDelete(false); }}>
+          <div className="confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="delete-event-title" aria-describedby="delete-event-description">
+            <span className="confirm-icon"><i /></span>
+            <h2 id="delete-event-title">确认删除安排？</h2>
+            <p id="delete-event-description">删除后无法恢复，这条秋招进展将从日历中移除。</p>
+            <div><button className="secondary" type="button" onClick={() => setConfirmEventDelete(false)}>取消</button><button className="confirm-danger" type="button" onClick={removeEvent}>确认删除</button></div>
           </div>
         </div>
       )}
