@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 type EventType = "deadline" | "assessment" | "interview";
 type EventStatus = "todo" | "progress" | "done";
@@ -126,12 +126,13 @@ export default function Home() {
     const target = container?.querySelector<HTMLElement>(`[data-month="${targetMonth.getFullYear()}-${pad(targetMonth.getMonth() + 1)}"]`);
     if (container && target) {
       const top = target.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop;
-      container.scrollTo({ top, behavior });
+      if (behavior === "auto") container.scrollTop = top;
+      else container.scrollTo({ top, behavior });
     }
   }
 
-  useEffect(() => {
-    requestAnimationFrame(() => requestAnimationFrame(() => goToMonth(new Date(), "auto")));
+  useLayoutEffect(() => {
+    goToMonth(new Date(), "auto");
   }, []);
 
   function syncMonthFromScroll() {
