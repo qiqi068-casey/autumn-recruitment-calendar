@@ -123,14 +123,26 @@ export default function Home() {
     });
   }, [month]);
 
-  const nearTermEndKey = offsetDate(6);
-  const nearTermEvents = events.filter((event) => event.date >= todayKey && event.date <= nearTermEndKey);
+  const weekStartDate = new Date();
+  weekStartDate.setDate(weekStartDate.getDate() - weekStartDate.getDay());
+  const weekEndDate = new Date(weekStartDate);
+  weekEndDate.setDate(weekStartDate.getDate() + 6);
+  const weekStartKey = toDateKey(weekStartDate);
+  const weekEndKey = toDateKey(weekEndDate);
+  const weekEvents = events.filter((event) => event.date >= weekStartKey && event.date <= weekEndKey);
+  const completedWeekEvents = weekEvents.filter((event) => event.status === "done");
+  const weekInterviews = weekEvents.filter((event) => event.type === "interview");
+  const completedWeekInterviews = weekInterviews.filter((event) => event.status === "done");
+  const weekRangeLabel = `${weekStartDate.getMonth() + 1}.${weekStartDate.getDate()} — ${weekEndDate.getMonth() + 1}.${weekEndDate.getDate()}`;
   const stats = {
-    applications: new Set(nearTermEvents.filter((event) => event.type !== "deadline").map((event) => event.company.trim().toLowerCase())).size,
-    upcoming: nearTermEvents.length,
-    interviews: nearTermEvents.filter((event) => event.type === "interview" && event.status === "done").length,
-    completed: nearTermEvents.filter((event) => event.status === "done").length,
+    applications: new Set(events.filter((event) => event.type === "application" && event.status === "done").map((event) => event.company.trim().toLowerCase())).size,
+    weeklyTotal: weekEvents.length,
+    weeklyCompleted: completedWeekEvents.length,
+    weeklyInterviews: weekInterviews.length,
+    weeklyInterviewsCompleted: completedWeekInterviews.length,
   };
+  const weeklyProgress = stats.weeklyTotal ? Math.round((stats.weeklyCompleted / stats.weeklyTotal) * 100) : 0;
+  const interviewProgress = stats.weeklyInterviews ? Math.round((stats.weeklyInterviewsCompleted / stats.weeklyInterviews) * 100) : 0;
 
   function openCreate(date = selectedDate) {
     setEditingId(null);
@@ -196,18 +208,24 @@ export default function Home() {
           <h1>今天也在向理想 offer<br />靠近一点点。</h1>
           <p className="subtitle">集中管理投递截止、测评和面试，不错过每一个重要节点。</p>
         </div>
-        <div className="quote-card">
-          <span className="quote-mark">“</span>
-          <p>别让机会藏在聊天记录里，<br />把它放进日历。</p>
-          <small>{new Date().toLocaleDateString("zh-CN", { month: "long", day: "numeric", weekday: "long" })}</small>
+        <div className="application-total-card">
+          <span>累计投递</span>
+          <strong>{stats.applications}<em>家公司</em></strong>
+          <small>仅统计“已投递”且已勾选的公司</small>
         </div>
       </section>
 
       <section className="stats-grid" aria-label="秋招数据概览">
-        <div className="stat-card blue"><div><small>累计投递</small><strong>{stats.applications}<em>家公司</em></strong><span>今天起 7 天内进入投递流程</span></div></div>
-        <div className="stat-card coral"><div><small>全部安排</small><strong>{stats.upcoming}<em>项</em></strong><span>今天起 7 天内所有日程</span></div></div>
-        <div className="stat-card green"><div><small>完成面试</small><strong>{stats.interviews}<em>场</em></strong><span>今天起 7 天内已勾选面试</span></div></div>
-        <div className="stat-card purple"><div><small>已完成</small><strong>{stats.completed}<em>项</em></strong><span>今天起 7 天内已勾选安排</span></div></div>
+        <div className="progress-card coral">
+          <div className="progress-head"><div><small>本周待办进度</small><strong>{stats.weeklyCompleted}<em> / {stats.weeklyTotal} 项</em></strong></div><span>{weekRangeLabel}</span></div>
+          <div className="progress-track" aria-label={`本周待办完成 ${weeklyProgress}%`}><i style={{ width: `${weeklyProgress}%` }} /></div>
+          <div className="progress-foot"><span>全部安排 {stats.weeklyTotal}</span><b>{weeklyProgress}%</b><span>已完成 {stats.weeklyCompleted}</span></div>
+        </div>
+        <div className="progress-card green">
+          <div className="progress-head"><div><small>本周面试进度</small><strong>{stats.weeklyInterviewsCompleted}<em> / {stats.weeklyInterviews} 场</em></strong></div><span>{weekRangeLabel}</span></div>
+          <div className="progress-track" aria-label={`本周面试完成 ${interviewProgress}%`}><i style={{ width: `${interviewProgress}%` }} /></div>
+          <div className="progress-foot"><span>面试安排 {stats.weeklyInterviews}</span><b>{interviewProgress}%</b><span>已完成 {stats.weeklyInterviewsCompleted}</span></div>
+        </div>
       </section>
 
       <section className="workspace">
@@ -234,7 +252,7 @@ export default function Home() {
               const dayEvents = filtered.filter((e) => e.date === key);
               const outside = date.getMonth() !== month.getMonth();
               const weekend = date.getDay() === 6 ? "saturday" : date.getDay() === 0 ? "sunday" : "";
-              const nearTerm = key >= todayKey && key <= nearTermEndKey;
+              const nearTerm = key >= weekStartKey && key <= weekEndKey;
               const holiday = holidays2026[key];
               return (
                 <button key={key} className={`day-cell ${outside ? "outside" : ""} ${weekend} ${holiday ? "holiday" : ""} ${nearTerm ? "near-term" : ""} ${key === todayKey ? "today" : ""} ${key === selectedDate ? "selected" : ""}`} onClick={() => setSelectedDate(key)} onDoubleClick={() => openCreate(key)}>
@@ -248,7 +266,7 @@ export default function Home() {
               );
             })}
           </div>
-          <div className="legend">{Object.entries(typeMeta).map(([key, meta]) => <span key={key}><i className={meta.color} />{meta.label}</span>)}<span className="near-term-key"><i />近 7 天</span><small>双击日期可快速添加</small></div>
+          <div className="legend">{Object.entries(typeMeta).map(([key, meta]) => <span key={key}><i className={meta.color} />{meta.label}</span>)}<span className="near-term-key"><i />本周</span><small>双击日期可快速添加</small></div>
         </div>
 
         <aside className="side-panel">
