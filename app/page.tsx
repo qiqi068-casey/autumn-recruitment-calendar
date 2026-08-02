@@ -211,20 +211,17 @@ export default function Home() {
         <div className="application-total-card">
           <span>累计投递</span>
           <strong>{stats.applications}<em>家公司</em></strong>
-          <small>仅统计“已投递”且已勾选的公司</small>
         </div>
       </section>
 
       <section className="stats-grid" aria-label="秋招数据概览">
         <div className="progress-card coral">
-          <div className="progress-head"><div><small>本周待办进度</small><strong>{stats.weeklyCompleted}<em> / {stats.weeklyTotal} 项</em></strong></div><span>{weekRangeLabel}</span></div>
+          <div className="progress-head"><div><small>本周待办进度 <span>{weekRangeLabel}</span></small><strong>{stats.weeklyCompleted}<em> / {stats.weeklyTotal} 项</em></strong></div></div>
           <div className="progress-track" aria-label={`本周待办完成 ${weeklyProgress}%`}><i style={{ width: `${weeklyProgress}%` }} /></div>
-          <div className="progress-foot"><span>全部安排 {stats.weeklyTotal}</span><b>{weeklyProgress}%</b><span>已完成 {stats.weeklyCompleted}</span></div>
         </div>
         <div className="progress-card green">
-          <div className="progress-head"><div><small>本周面试进度</small><strong>{stats.weeklyInterviewsCompleted}<em> / {stats.weeklyInterviews} 场</em></strong></div><span>{weekRangeLabel}</span></div>
+          <div className="progress-head"><div><small>本周面试进度 <span>{weekRangeLabel}</span></small><strong>{stats.weeklyInterviewsCompleted}<em> / {stats.weeklyInterviews} 场</em></strong></div></div>
           <div className="progress-track" aria-label={`本周面试完成 ${interviewProgress}%`}><i style={{ width: `${interviewProgress}%` }} /></div>
-          <div className="progress-foot"><span>面试安排 {stats.weeklyInterviews}</span><b>{interviewProgress}%</b><span>已完成 {stats.weeklyInterviewsCompleted}</span></div>
         </div>
       </section>
 
@@ -276,7 +273,8 @@ export default function Home() {
               <div className={`agenda-item ${event.status === "done" ? "completed" : ""}`} key={event.id}>
                 <button className="agenda-open" type="button" onClick={() => openEdit(event)} aria-label={`编辑 ${event.company} ${event.role}`}>
                   <span className={`agenda-line ${typeMeta[event.type].color}`} />
-                  <span className="agenda-copy"><small>{typeMeta[event.type].label}</small><span className="agenda-mainline"><strong>{event.company}</strong><em>{event.role}{event.time && <span className="agenda-time"> · {event.time}</span>}</em></span></span>
+                  <span className="agenda-copy"><span className="agenda-mainline"><strong>{event.company}</strong><em>{event.role}{event.time && <span className="agenda-time"> · {event.time}</span>}</em></span></span>
+                  <span className={`agenda-type ${typeMeta[event.type].color}`}>{typeMeta[event.type].short}</span>
                 </button>
                 <button className="completion-check" type="button" aria-label={event.status === "done" ? "标记为未完成" : "标记为已完成"} aria-pressed={event.status === "done"} onClick={() => toggleCompleted(event.id)}><span>✓</span></button>
               </div>
