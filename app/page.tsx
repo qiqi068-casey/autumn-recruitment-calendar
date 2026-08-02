@@ -67,18 +67,24 @@ export default function Home() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm());
   const [hydrated, setHydrated] = useState(false);
+  const [memo, setMemo] = useState("");
 
   useEffect(() => {
     const saved = localStorage.getItem("autumn-recruitment-events");
     if (saved) {
       try { setEvents(JSON.parse(saved)); } catch { /* keep demo data */ }
     }
+    setMemo(localStorage.getItem("autumn-recruitment-memo") ?? "");
     setHydrated(true);
   }, []);
 
   useEffect(() => {
     if (hydrated) localStorage.setItem("autumn-recruitment-events", JSON.stringify(events));
   }, [events, hydrated]);
+
+  useEffect(() => {
+    if (hydrated) localStorage.setItem("autumn-recruitment-memo", memo);
+  }, [memo, hydrated]);
 
   useEffect(() => {
     if (!modalOpen) return;
@@ -161,6 +167,7 @@ export default function Home() {
 
   const selectedEvents = filtered.filter((e) => e.date === selectedDate);
   const monthLabel = `${month.getFullYear()}年 ${month.getMonth() + 1}月`;
+  const nearTermEndKey = offsetDate(6);
 
   return (
     <main className="app-shell">
@@ -212,14 +219,16 @@ export default function Home() {
               ))}
             </div>
           </div>
-          <div className="week-row">{["一", "二", "三", "四", "五", "六", "日"].map((d) => <span key={d}>周{d}</span>)}</div>
+          <div className="week-row">{["一", "二", "三", "四", "五", "六", "日"].map((d, index) => <span key={d} className={index === 5 ? "saturday" : index === 6 ? "sunday" : ""}>周{d}</span>)}</div>
           <div className="calendar-grid">
             {calendarDays.map((date) => {
               const key = toDateKey(date);
               const dayEvents = filtered.filter((e) => e.date === key);
               const outside = date.getMonth() !== month.getMonth();
+              const weekend = date.getDay() === 6 ? "saturday" : date.getDay() === 0 ? "sunday" : "";
+              const nearTerm = key >= todayKey && key <= nearTermEndKey;
               return (
-                <button key={key} className={`day-cell ${outside ? "outside" : ""} ${key === todayKey ? "today" : ""} ${key === selectedDate ? "selected" : ""}`} onClick={() => setSelectedDate(key)} onDoubleClick={() => openCreate(key)}>
+                <button key={key} className={`day-cell ${outside ? "outside" : ""} ${weekend} ${nearTerm ? "near-term" : ""} ${key === todayKey ? "today" : ""} ${key === selectedDate ? "selected" : ""}`} onClick={() => setSelectedDate(key)} onDoubleClick={() => openCreate(key)}>
                   <span className="day-number">{date.getDate()}</span>
                   <div className="day-events">
                     {dayEvents.slice(0, 3).map((event) => <span key={event.id} className={`event-chip ${typeMeta[event.type].color}`}><i />{event.company}<b>{typeMeta[event.type].short}</b></span>)}
@@ -229,7 +238,7 @@ export default function Home() {
               );
             })}
           </div>
-          <div className="legend">{Object.entries(typeMeta).map(([key, meta]) => <span key={key}><i className={meta.color} />{meta.label}</span>)}<small>双击日期可快速添加</small></div>
+          <div className="legend">{Object.entries(typeMeta).map(([key, meta]) => <span key={key}><i className={meta.color} />{meta.label}</span>)}<span className="near-term-key"><i />近 7 天</span><small>双击日期可快速添加</small></div>
         </div>
 
         <aside className="side-panel">
@@ -244,14 +253,11 @@ export default function Home() {
             )) : <div className="empty"><span>☕</span><strong>这一天还没有安排</strong><p>留一点空白，也留一点呼吸。</p></div>}
           </div>
 
-          <div className="upcoming-title"><h3>接下来</h3><span>{upcoming.length} 项待办</span></div>
-          <div className="upcoming-list">
-            {upcoming.slice(0, 4).map((event) => (
-              <button key={event.id} onClick={() => { setSelectedDate(event.date); openEdit(event); }}>
-                <span className="date-tile"><b>{new Date(`${event.date}T12:00:00`).getDate()}</b><small>{new Date(`${event.date}T12:00:00`).toLocaleDateString("zh-CN", { month: "short" })}</small></span>
-                <span><strong>{event.company} · {typeMeta[event.type].short}</strong><small>{event.role}{event.time ? ` · ${event.time}` : ""}</small></span>
-              </button>
-            ))}
+          <div className="memo-panel">
+            <div className="memo-title"><div><p>EXTRA NOTES</p><h3>秋招备忘</h3></div><span>自动保存</span></div>
+            <p className="memo-hint">记录由秋招延伸出来的其它事情、灵感或提醒。</p>
+            <textarea value={memo} onChange={(e) => setMemo(e.target.value)} aria-label="秋招备忘" placeholder={'例如：\n· 更新作品集首页\n· 联系学长了解业务方向\n· 周五前打印成绩单'} />
+            <div className="memo-footer"><span>{memo.length} 字</span><button type="button" onClick={() => setMemo("")} disabled={!memo}>清空</button></div>
           </div>
         </aside>
       </section>
