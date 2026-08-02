@@ -80,6 +80,20 @@ export default function Home() {
     if (hydrated) localStorage.setItem("autumn-recruitment-events", JSON.stringify(events));
   }, [events, hydrated]);
 
+  useEffect(() => {
+    if (!modalOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setModalOpen(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [modalOpen]);
+
   const filtered = useMemo(() => events.filter((event) => {
     const matchesType = filter === "all" || event.type === filter;
     const text = `${event.company} ${event.role} ${event.note ?? ""}`.toLowerCase();
@@ -136,6 +150,13 @@ export default function Home() {
     if (!editingId) return;
     setEvents((all) => all.filter((e) => e.id !== editingId));
     setModalOpen(false);
+  }
+
+  function updateTime(part: "hour" | "minute", value: string) {
+    const [currentHour = "", currentMinute = ""] = form.time?.split(":") ?? [];
+    const hour = part === "hour" ? value : currentHour;
+    const minute = part === "minute" ? value : currentMinute;
+    setForm({ ...form, time: hour ? `${hour}:${minute || "00"}` : "" });
   }
 
   const selectedEvents = filtered.filter((e) => e.date === selectedDate);
@@ -237,13 +258,13 @@ export default function Home() {
 
       {modalOpen && (
         <div className="modal-backdrop" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) setModalOpen(false); }}>
-          <form className="modal" onSubmit={saveEvent}>
-            <div className="modal-head"><div><p>{editingId ? "更新进展" : "记录新机会"}</p><h2>{editingId ? "编辑秋招安排" : "添加秋招安排"}</h2></div><button type="button" onClick={() => setModalOpen(false)}>×</button></div>
+          <form className="modal" onSubmit={saveEvent} role="dialog" aria-modal="true" aria-labelledby="modal-title">
+            <div className="modal-head"><div><p>{editingId ? "更新进展" : "记录新机会"}</p><h2 id="modal-title">{editingId ? "编辑秋招安排" : "添加秋招安排"}</h2></div><button type="button" aria-label="关闭弹窗" onClick={() => setModalOpen(false)}>×</button></div>
             <div className="form-grid">
               <label><span>公司名称 *</span><input autoFocus required value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} placeholder="例如：腾讯" /></label>
               <label><span>岗位名称 *</span><input required value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} placeholder="例如：产品经理" /></label>
               <label><span>日期 *</span><input type="date" required value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></label>
-              <label><span>时间</span><input type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} /></label>
+              <label><span>具体时间</span><span className="time-selects"><select aria-label="小时" value={form.time?.split(":")[0] ?? ""} onChange={(e) => updateTime("hour", e.target.value)}><option value="">小时</option>{Array.from({ length: 24 }, (_, hour) => pad(hour)).map((hour) => <option key={hour} value={hour}>{hour} 时</option>)}</select><b>:</b><select aria-label="分钟" value={form.time?.split(":")[1] ?? "00"} disabled={!form.time} onChange={(e) => updateTime("minute", e.target.value)}>{["00", "15", "30", "45"].map((minute) => <option key={minute} value={minute}>{minute} 分</option>)}</select></span></label>
               <label><span>安排类型</span><select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as EventType })}>{Object.entries(typeMeta).map(([key, meta]) => <option key={key} value={key}>{meta.label}</option>)}</select></label>
               <label><span>当前状态</span><select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as EventStatus })}>{Object.entries(statusLabel).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
               <label className="full"><span>备注</span><textarea rows={3} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder="面试轮次、测评链接、需要准备的内容……" /></label>
