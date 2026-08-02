@@ -186,7 +186,13 @@ export default function Home() {
       : event));
   }
 
-  const selectedEvents = filtered.filter((e) => e.date === selectedDate);
+  const selectedEvents = filtered
+    .filter((e) => e.date === selectedDate)
+    .sort((a, b) => {
+      const priority = Number(b.type === "interview") - Number(a.type === "interview");
+      if (priority !== 0) return priority;
+      return (a.time || "99:99").localeCompare(b.time || "99:99");
+    });
   const monthLabel = `${month.getFullYear()}年 ${month.getMonth() + 1}月`;
 
   return (
@@ -256,8 +262,8 @@ export default function Home() {
                   <span className="day-number">{date.getDate()}</span>
                   {holiday && <span className="holiday-label">{holiday}</span>}
                   <div className="day-events">
-                    {dayEvents.slice(0, 3).map((event) => <span key={event.id} className={`event-chip ${typeMeta[event.type].color} ${event.status === "done" ? "completed" : "pending"}`}><i />{event.company}<b>{event.status === "done" ? "已完成" : typeMeta[event.type].short}</b></span>)}
-                    {dayEvents.length > 3 && <span className="more">另有 {dayEvents.length - 3} 项</span>}
+                    {dayEvents.slice(0, 2).map((event) => <span key={event.id} className={`event-chip ${typeMeta[event.type].color} ${event.status === "done" ? "completed" : "pending"}`}><i />{event.company}<b>{event.status === "done" ? "已完成" : typeMeta[event.type].short}</b></span>)}
+                    {dayEvents.length > 2 && <span className="more">＋{dayEvents.length - 2} 项安排</span>}
                   </div>
                 </button>
               );
