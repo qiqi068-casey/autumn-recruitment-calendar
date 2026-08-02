@@ -213,7 +213,7 @@ export default function Home() {
       <section className="intro">
         <div>
           <p className="eyebrow">AUTUMN RECRUITMENT · {new Date().getFullYear()}</p>
-          <h1>今天也在向理想 offer<br />靠近一点点。</h1>
+          <h1>理想 offer，正在靠近。</h1>
           <p className="subtitle">集中管理投递截止、测评和面试，不错过每一个重要节点。</p>
         </div>
         <div className="application-total-card">
@@ -238,7 +238,19 @@ export default function Home() {
           <div className="calendar-toolbar">
             <div className="month-switcher">
               <button aria-label="上个月" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}>‹</button>
-              <h2>{monthLabel}</h2>
+              <label className="month-picker" title="选择月份">
+                <span>{monthLabel}</span>
+                <input
+                  type="month"
+                  aria-label="选择日历月份"
+                  value={`${month.getFullYear()}-${pad(month.getMonth() + 1)}`}
+                  onChange={(event) => {
+                    if (!event.target.value) return;
+                    const [year, monthNumber] = event.target.value.split("-").map(Number);
+                    setMonth(new Date(year, monthNumber - 1, 1));
+                  }}
+                />
+              </label>
               <button aria-label="下个月" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}>›</button>
               <button className="today-btn" onClick={() => { const d = new Date(); setMonth(new Date(d.getFullYear(), d.getMonth(), 1)); setSelectedDate(todayKey); }}>今天</button>
             </div>
@@ -250,8 +262,9 @@ export default function Home() {
               ))}
             </div>
           </div>
-          <div className="week-row">{["一", "二", "三", "四", "五", "六", "日"].map((d, index) => <span key={d} className={index === 5 ? "saturday" : index === 6 ? "sunday" : ""}>周{d}</span>)}</div>
-          <div className="calendar-grid">
+          <div className="calendar-scroll">
+            <div className="week-row">{["一", "二", "三", "四", "五", "六", "日"].map((d, index) => <span key={d} className={index === 5 ? "saturday" : index === 6 ? "sunday" : ""}>周{d}</span>)}</div>
+            <div className="calendar-grid">
             {calendarDays.map((date) => {
               const key = toDateKey(date);
               const dayEvents = filtered.filter((e) => e.date === key);
@@ -270,6 +283,7 @@ export default function Home() {
                 </button>
               );
             })}
+            </div>
           </div>
           <div className="legend">{Object.entries(typeMeta).map(([key, meta]) => <span key={key}><i className={meta.color} />{meta.label}</span>)}<span className="near-term-key"><i />本周</span><small>双击日期可快速添加</small></div>
         </div>
