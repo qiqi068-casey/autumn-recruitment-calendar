@@ -121,11 +121,14 @@ export default function Home() {
     setMonth(new Date(targetMonth.getFullYear(), targetMonth.getMonth(), 1));
     const container = calendarScrollRef.current;
     const target = container?.querySelector<HTMLElement>(`[data-month="${targetMonth.getFullYear()}-${pad(targetMonth.getMonth() + 1)}"]`);
-    if (container && target) container.scrollTo({ top: target.offsetTop, behavior });
+    if (container && target) {
+      const top = target.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop;
+      container.scrollTo({ top, behavior });
+    }
   }
 
   useEffect(() => {
-    requestAnimationFrame(() => goToMonth(new Date(), "auto"));
+    requestAnimationFrame(() => requestAnimationFrame(() => goToMonth(new Date(), "auto")));
   }, []);
 
   function syncMonthFromScroll() {
