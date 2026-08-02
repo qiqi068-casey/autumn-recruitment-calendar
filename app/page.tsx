@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
 type EventType = "deadline" | "application" | "assessment" | "interview";
 type EventStatus = "todo" | "progress" | "done";
@@ -22,12 +22,6 @@ const typeMeta: Record<EventType, { label: string; short: string; color: string 
   interview: { label: "面试", short: "面试", color: "green" },
 };
 
-const statusLabel: Record<EventStatus, string> = {
-  todo: "待处理",
-  progress: "进行中",
-  done: "已完成",
-};
-
 const pad = (n: number) => String(n).padStart(2, "0");
 const toDateKey = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const todayKey = toDateKey(new Date());
@@ -37,6 +31,16 @@ function offsetDate(days: number) {
   d.setDate(d.getDate() + days);
   return toDateKey(d);
 }
+
+const holidays2026: Record<string, string> = {
+  "2026-01-01": "元旦", "2026-01-02": "元旦", "2026-01-03": "元旦",
+  "2026-02-15": "春节", "2026-02-16": "春节", "2026-02-17": "春节", "2026-02-18": "春节", "2026-02-19": "春节", "2026-02-20": "春节", "2026-02-21": "春节", "2026-02-22": "春节", "2026-02-23": "春节",
+  "2026-04-04": "清明", "2026-04-05": "清明", "2026-04-06": "清明",
+  "2026-05-01": "劳动节", "2026-05-02": "劳动节", "2026-05-03": "劳动节", "2026-05-04": "劳动节", "2026-05-05": "劳动节",
+  "2026-06-19": "端午", "2026-06-20": "端午", "2026-06-21": "端午",
+  "2026-09-25": "中秋", "2026-09-26": "中秋", "2026-09-27": "中秋",
+  "2026-10-01": "国庆", "2026-10-02": "国庆", "2026-10-03": "国庆", "2026-10-04": "国庆", "2026-10-05": "国庆", "2026-10-06": "国庆", "2026-10-07": "国庆",
+};
 
 const initialEvents: RecruitEvent[] = [
   { id: "1", company: "字节跳动", role: "产品经理", date: offsetDate(1), type: "deadline", status: "todo", note: "完善项目经历后投递" },
@@ -69,6 +73,7 @@ export default function Home() {
   const [hydrated, setHydrated] = useState(false);
   const [memo, setMemo] = useState("");
   const [confirmMemoClear, setConfirmMemoClear] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem("autumn-recruitment-events");
@@ -118,16 +123,13 @@ export default function Home() {
     });
   }, [month]);
 
-  const upcoming = useMemo(() => [...events]
-    .filter((e) => e.date >= todayKey && e.status !== "done")
-    .sort((a, b) => `${a.date}${a.time ?? ""}`.localeCompare(`${b.date}${b.time ?? ""}`))
-    .slice(0, 6), [events]);
-
+  const nearTermEndKey = offsetDate(6);
+  const nearTermEvents = events.filter((event) => event.date >= todayKey && event.date <= nearTermEndKey);
   const stats = {
-    applications: events.filter((e) => e.type === "application").length,
-    upcoming: events.filter((e) => e.date >= todayKey && e.status !== "done").length,
-    interviews: events.filter((e) => e.type === "interview").length,
-    completed: events.filter((e) => e.status === "done").length,
+    applications: new Set(nearTermEvents.filter((event) => event.type !== "deadline").map((event) => event.company.trim().toLowerCase())).size,
+    upcoming: nearTermEvents.length,
+    interviews: nearTermEvents.filter((event) => event.type === "interview" && event.status === "done").length,
+    completed: nearTermEvents.filter((event) => event.status === "done").length,
   };
 
   function openCreate(date = selectedDate) {
@@ -174,7 +176,6 @@ export default function Home() {
 
   const selectedEvents = filtered.filter((e) => e.date === selectedDate);
   const monthLabel = `${month.getFullYear()}年 ${month.getMonth() + 1}月`;
-  const nearTermEndKey = offsetDate(6);
 
   return (
     <main className="app-shell">
@@ -184,8 +185,8 @@ export default function Home() {
           <div><strong>秋招日历</strong><span>把每一次机会安排得刚刚好</span></div>
         </div>
         <div className="header-actions">
-          <label className="search"><span>⌕</span><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="搜索公司或岗位" aria-label="搜索公司或岗位" /></label>
-          <button className="primary" onClick={() => openCreate()}>＋ 添加安排</button>
+          <label className="search"><span>⌕</span><input ref={searchInputRef} value={query} onChange={(e) => setQuery(e.target.value)} placeholder="搜索公司或岗位" aria-label="搜索公司或岗位" /></label>
+          <button className="primary search-button" onClick={() => searchInputRef.current?.focus()}>搜索</button>
         </div>
       </header>
 
@@ -203,10 +204,10 @@ export default function Home() {
       </section>
 
       <section className="stats-grid" aria-label="秋招数据概览">
-        <div className="stat-card"><span className="stat-icon blue">↗</span><div><small>累计投递</small><strong>{stats.applications}</strong></div><em>家公司</em></div>
-        <div className="stat-card"><span className="stat-icon coral">◷</span><div><small>待办安排</small><strong>{stats.upcoming}</strong></div><em>项</em></div>
-        <div className="stat-card"><span className="stat-icon green">◎</span><div><small>面试进程</small><strong>{stats.interviews}</strong></div><em>场</em></div>
-        <div className="stat-card"><span className="stat-icon purple">✓</span><div><small>已完成</small><strong>{stats.completed}</strong></div><em>项</em></div>
+        <div className="stat-card blue"><div><small>累计投递</small><strong>{stats.applications}<em>家公司</em></strong><span>今天起 7 天内进入投递流程</span></div></div>
+        <div className="stat-card coral"><div><small>全部安排</small><strong>{stats.upcoming}<em>项</em></strong><span>今天起 7 天内所有日程</span></div></div>
+        <div className="stat-card green"><div><small>完成面试</small><strong>{stats.interviews}<em>场</em></strong><span>今天起 7 天内已勾选面试</span></div></div>
+        <div className="stat-card purple"><div><small>已完成</small><strong>{stats.completed}<em>项</em></strong><span>今天起 7 天内已勾选安排</span></div></div>
       </section>
 
       <section className="workspace">
@@ -234,11 +235,13 @@ export default function Home() {
               const outside = date.getMonth() !== month.getMonth();
               const weekend = date.getDay() === 6 ? "saturday" : date.getDay() === 0 ? "sunday" : "";
               const nearTerm = key >= todayKey && key <= nearTermEndKey;
+              const holiday = holidays2026[key];
               return (
-                <button key={key} className={`day-cell ${outside ? "outside" : ""} ${weekend} ${nearTerm ? "near-term" : ""} ${key === todayKey ? "today" : ""} ${key === selectedDate ? "selected" : ""}`} onClick={() => setSelectedDate(key)} onDoubleClick={() => openCreate(key)}>
+                <button key={key} className={`day-cell ${outside ? "outside" : ""} ${weekend} ${holiday ? "holiday" : ""} ${nearTerm ? "near-term" : ""} ${key === todayKey ? "today" : ""} ${key === selectedDate ? "selected" : ""}`} onClick={() => setSelectedDate(key)} onDoubleClick={() => openCreate(key)}>
                   <span className="day-number">{date.getDate()}</span>
+                  {holiday && <span className="holiday-label">{holiday}</span>}
                   <div className="day-events">
-                    {dayEvents.slice(0, 3).map((event) => <span key={event.id} className={`event-chip ${typeMeta[event.type].color}`}><i />{event.company}<b>{typeMeta[event.type].short}</b></span>)}
+                    {dayEvents.slice(0, 3).map((event) => <span key={event.id} className={`event-chip ${typeMeta[event.type].color} ${event.status === "done" ? "completed" : "pending"}`}><i />{event.company}<b>{event.status === "done" ? "已完成" : typeMeta[event.type].short}</b></span>)}
                     {dayEvents.length > 3 && <span className="more">另有 {dayEvents.length - 3} 项</span>}
                   </div>
                 </button>
@@ -255,7 +258,7 @@ export default function Home() {
               <div className={`agenda-item ${event.status === "done" ? "completed" : ""}`} key={event.id}>
                 <button className="agenda-open" type="button" onClick={() => openEdit(event)} aria-label={`编辑 ${event.company} ${event.role}`}>
                   <span className={`agenda-line ${typeMeta[event.type].color}`} />
-                  <span className="agenda-copy"><small>{typeMeta[event.type].label}</small><strong>{event.company}</strong><em>{event.role}{event.time && <span className="agenda-time"> · {event.time}</span>}</em></span>
+                  <span className="agenda-copy"><small>{typeMeta[event.type].label}</small><span className="agenda-mainline"><strong>{event.company}</strong><em>{event.role}{event.time && <span className="agenda-time"> · {event.time}</span>}</em></span></span>
                 </button>
                 <button className="completion-check" type="button" aria-label={event.status === "done" ? "标记为未完成" : "标记为已完成"} aria-pressed={event.status === "done"} onClick={() => toggleCompleted(event.id)}><span>✓</span></button>
               </div>
@@ -263,9 +266,8 @@ export default function Home() {
           </div>
 
           <div className="memo-panel">
-            <div className="memo-title"><div><p>EXTRA NOTES</p><h3>秋招备忘</h3></div><span>自动保存</span></div>
-            <p className="memo-hint">记录由秋招延伸出来的其它事情、灵感或提醒。</p>
-            <textarea value={memo} onChange={(e) => setMemo(e.target.value)} aria-label="秋招备忘" placeholder={'例如：\n· 更新作品集首页\n· 联系学长了解业务方向\n· 周五前打印成绩单'} />
+            <div className="memo-title"><div><h3>备忘录</h3></div><span>自动保存</span></div>
+            <textarea value={memo} onChange={(e) => setMemo(e.target.value)} aria-label="备忘录" />
             <div className="memo-footer"><span>{memo.length} 字</span><button className="trash-button" type="button" onClick={() => setConfirmMemoClear(true)} disabled={!memo} aria-label="清空秋招备忘"><i /></button></div>
           </div>
         </aside>
