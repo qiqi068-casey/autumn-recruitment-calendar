@@ -73,6 +73,8 @@ export default function Home() {
   const [memo, setMemo] = useState("");
   const [confirmMemoClear, setConfirmMemoClear] = useState(false);
   const [confirmEventDelete, setConfirmEventDelete] = useState(false);
+  const [monthMenuOpen, setMonthMenuOpen] = useState(false);
+  const [pickerYear, setPickerYear] = useState(() => new Date().getFullYear());
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -260,19 +262,13 @@ export default function Home() {
           <div className="calendar-toolbar">
             <div className="month-switcher">
               <button aria-label="上个月" onClick={() => goToMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}>‹</button>
-              <label className="month-picker" title="选择月份">
-                <span>{monthLabel}</span>
-                <input
-                  type="month"
-                  aria-label="选择日历月份"
-                  value={`${month.getFullYear()}-${pad(month.getMonth() + 1)}`}
-                  onChange={(event) => {
-                    if (!event.target.value) return;
-                    const [year, monthNumber] = event.target.value.split("-").map(Number);
-                    goToMonth(new Date(year, monthNumber - 1, 1));
-                  }}
-                />
-              </label>
+              <div className="month-picker-wrap">
+                <button className="month-picker" type="button" aria-haspopup="dialog" aria-expanded={monthMenuOpen} onClick={() => { setPickerYear(month.getFullYear()); setMonthMenuOpen((open) => !open); }}><span>{monthLabel}</span></button>
+                {monthMenuOpen && <div className="month-dropdown" role="dialog" aria-label="选择月份">
+                  <div className="month-dropdown-head"><button type="button" aria-label="上一年" onClick={() => setPickerYear((year) => Math.max(2024, year - 1))}>‹</button><strong>{pickerYear}年</strong><button type="button" aria-label="下一年" onClick={() => setPickerYear((year) => Math.min(2031, year + 1))}>›</button></div>
+                  <div className="month-options">{Array.from({ length: 12 }, (_, index) => <button type="button" key={index} className={pickerYear === month.getFullYear() && index === month.getMonth() ? "active" : ""} onClick={() => { goToMonth(new Date(pickerYear, index, 1)); setMonthMenuOpen(false); }}>{index + 1}月</button>)}</div>
+                </div>}
+              </div>
               <button aria-label="下个月" onClick={() => goToMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}>›</button>
               <button className="today-btn" onClick={() => { goToMonth(new Date()); setSelectedDate(todayKey); }}>今天</button>
             </div>
