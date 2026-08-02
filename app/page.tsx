@@ -263,7 +263,7 @@ export default function Home() {
                   {holiday && <span className="holiday-label">{holiday}</span>}
                   <div className="day-events">
                     {dayEvents.slice(0, 2).map((event) => <span key={event.id} className={`event-chip ${typeMeta[event.type].color} ${event.status === "done" ? "completed" : "pending"}`}><i />{event.company}<b>{event.status === "done" ? "已完成" : typeMeta[event.type].short}</b></span>)}
-                    {dayEvents.length > 2 && <span className="more">＋{dayEvents.length - 2} 项安排</span>}
+                    {dayEvents.length > 2 && <span className="more">＋{dayEvents.length - 2}</span>}
                   </div>
                 </button>
               );
