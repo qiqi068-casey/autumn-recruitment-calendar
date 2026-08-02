@@ -114,14 +114,37 @@ export default function Home() {
     return matchesType && text.includes(query.trim().toLowerCase());
   }), [events, filter, query]);
 
-  const calendarMonths = useMemo(() => Array.from({ length: 96 }, (_, index) => new Date(2024, index, 1)), []);
+  const continuousDays = useMemo(() => {
+    const start = new Date(2024, 0, 1);
+    const end = new Date(2031, 11, 31);
+    return Array.from({ length: Math.round((end.getTime() - start.getTime()) / 86400000) + 1 }, (_, index) => {
+      const date = new Date(start);
+      date.setDate(start.getDate() + index);
+      return date;
+    });
+  }, []);
   const calendarScrollRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  function goToMonth(targetMonth: Date, behavior: ScrollBehavior = "smooth") {
+    setMonth(targetMonth);
     const container = calendarScrollRef.current;
-    const target = container?.querySelector<HTMLElement>(`[data-month="${month.getFullYear()}-${pad(month.getMonth() + 1)}"]`);
-    if (container && target) container.scrollTo({ top: target.offsetTop, behavior: "smooth" });
-  }, [month]);
+    const target = container?.querySelector<HTMLElement>(`[data-date="${targetMonth.getFullYear()}-${pad(targetMonth.getMonth() + 1)}-01"]`);
+    if (container && target) container.scrollTo({ top: target.offsetTop, behavior });
+  }
+
+  useEffect(() => {
+    requestAnimationFrame(() => goToMonth(new Date(), "auto"));
+  }, []);
+
+  function syncMonthFromScroll() {
+    const container = calendarScrollRef.current;
+    if (!container) return;
+    const bounds = container.getBoundingClientRect();
+    const representative = document.elementFromPoint(bounds.left + bounds.width / 2, bounds.top + 12)?.closest<HTMLElement>(".day-cell[data-date]");
+    if (!representative) return;
+    const [year, monthNumber] = (representative.dataset.date ?? todayKey).split("-").map(Number);
+    if (year !== month.getFullYear() || monthNumber - 1 !== month.getMonth()) setMonth(new Date(year, monthNumber - 1, 1));
+  }
 
   const weekStartDate = new Date();
   weekStartDate.setDate(weekStartDate.getDate() - weekStartDate.getDay());
@@ -235,7 +258,7 @@ export default function Home() {
         <div className="calendar-card">
           <div className="calendar-toolbar">
             <div className="month-switcher">
-              <button aria-label="上个月" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}>‹</button>
+              <button aria-label="上个月" onClick={() => goToMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}>‹</button>
               <label className="month-picker" title="选择月份">
                 <span>{monthLabel}</span>
                 <input
@@ -245,12 +268,12 @@ export default function Home() {
                   onChange={(event) => {
                     if (!event.target.value) return;
                     const [year, monthNumber] = event.target.value.split("-").map(Number);
-                    setMonth(new Date(year, monthNumber - 1, 1));
+                    goToMonth(new Date(year, monthNumber - 1, 1));
                   }}
                 />
               </label>
-              <button aria-label="下个月" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}>›</button>
-              <button className="today-btn" onClick={() => { const d = new Date(); setMonth(new Date(d.getFullYear(), d.getMonth(), 1)); setSelectedDate(todayKey); }}>今天</button>
+              <button aria-label="下个月" onClick={() => goToMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}>›</button>
+              <button className="today-btn" onClick={() => { goToMonth(new Date()); setSelectedDate(todayKey); }}>今天</button>
             </div>
             <div className="filters">
               {(["all", "deadline", "assessment", "interview"] as const).map((item) => (
@@ -260,28 +283,18 @@ export default function Home() {
               ))}
             </div>
           </div>
-          <div className="calendar-scroll continuous" ref={calendarScrollRef}>
-            {calendarMonths.map((calendarMonth) => {
-              const year = calendarMonth.getFullYear();
-              const monthIndex = calendarMonth.getMonth();
-              const leadingBlanks = (calendarMonth.getDay() + 6) % 7;
-              const dayCount = new Date(year, monthIndex + 1, 0).getDate();
-              const cells = [...Array.from({ length: leadingBlanks }, () => null), ...Array.from({ length: dayCount }, (_, index) => new Date(year, monthIndex, index + 1))];
-              while (cells.length % 7) cells.push(null);
-              const monthKey = `${year}-${pad(monthIndex + 1)}`;
-              return <section className="calendar-month" data-month={monthKey} key={monthKey}>
-                <h3>{year}年 {monthIndex + 1}月</h3>
-                <div className="week-row">{["一", "二", "三", "四", "五", "六", "日"].map((d, index) => <span key={d} className={index >= 5 ? "weekend" : ""}>周{d}</span>)}</div>
+          <div className="week-row fixed-week-row">{["一", "二", "三", "四", "五", "六", "日"].map((d, index) => <span key={d} className={index >= 5 ? "weekend" : ""}>周{d}</span>)}</div>
+          <div className="calendar-scroll continuous" ref={calendarScrollRef} onScroll={syncMonthFromScroll}>
                 <div className="calendar-grid">
-                  {cells.map((date, index) => {
-                    if (!date) return <span className="day-cell blank" aria-hidden="true" key={`blank-${index}`} />;
+                  {continuousDays.map((date) => {
                     const key = toDateKey(date);
                     const dayEvents = filtered.filter((e) => e.date === key);
                     const weekend = date.getDay() === 6 ? "saturday" : date.getDay() === 0 ? "sunday" : "";
                     const nearTerm = key >= weekStartKey && key <= weekEndKey;
                     const holiday = holidays2026[key];
-                    return <button key={key} className={`day-cell ${weekend} ${holiday ? "holiday" : ""} ${nearTerm ? "near-term" : ""} ${key === todayKey ? "today" : ""} ${key === selectedDate ? "selected" : ""}`} onClick={() => setSelectedDate(key)} onDoubleClick={() => openCreate(key)}>
+                    return <button data-date={key} key={key} className={`day-cell ${date.getDate() === 1 ? "month-start" : ""} ${weekend} ${holiday ? "holiday" : ""} ${nearTerm ? "near-term" : ""} ${key === todayKey ? "today" : ""} ${key === selectedDate ? "selected" : ""}`} onClick={() => setSelectedDate(key)} onDoubleClick={() => openCreate(key)}>
                       <span className="day-number">{date.getDate()}</span>
+                      {date.getDate() === 1 && <span className="month-cue">{date.getMonth() + 1}月</span>}
                       {holiday && <span className="holiday-label">{holiday}</span>}
                       <div className="day-events">
                         {dayEvents.slice(0, 2).map((event) => <span key={event.id} className={`event-chip ${typeMeta[event.type].color} ${event.status === "done" ? "completed" : "pending"}`}><i />{event.company}<b>{event.status === "done" ? "已完成" : typeMeta[event.type].short}</b></span>)}
@@ -290,8 +303,6 @@ export default function Home() {
                     </button>;
                   })}
                 </div>
-              </section>;
-            })}
           </div>
           <div className="legend">{Object.entries(typeMeta).map(([key, meta]) => <span key={key}><i className={meta.color} />{meta.label}</span>)}<span className="near-term-key"><i />本周</span><small>双击日期可快速添加</small></div>
         </div>
