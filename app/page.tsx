@@ -203,13 +203,6 @@ export default function Home() {
     setModalOpen(false);
   }
 
-  function updateTime(part: "hour" | "minute", value: string) {
-    const [currentHour = "", currentMinute = ""] = form.time?.split(":") ?? [];
-    const hour = part === "hour" ? value : currentHour;
-    const minute = part === "minute" ? value : currentMinute;
-    setForm({ ...form, time: hour ? `${hour}:${minute || "00"}` : "" });
-  }
-
   function toggleCompleted(id: string) {
     setEvents((all) => all.map((event) => event.id === id
       ? { ...event, status: event.status === "done" ? "todo" : "done" }
@@ -356,7 +349,7 @@ export default function Home() {
             <div className="form-grid">
               <label><span>公司名称 *</span><input autoFocus required value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} placeholder="例如：腾讯" /></label>
               <label><span>岗位名称 *</span><input required value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} placeholder="例如：产品经理" /></label>
-              <div className="date-time-group"><label><span>日期 *</span><input type="date" required value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></label><label className="compact-time"><span>具体时间（选填）</span><span className="time-selects"><select aria-label="小时" value={form.time?.split(":")[0] ?? ""} onChange={(e) => updateTime("hour", e.target.value)}><option value="">时</option>{Array.from({ length: 24 }, (_, hour) => pad(hour)).map((hour) => <option key={hour} value={hour}>{hour}</option>)}</select><b>:</b><select aria-label="分钟" value={form.time?.split(":")[1] ?? "00"} disabled={!form.time} onChange={(e) => updateTime("minute", e.target.value)}>{["00", "15", "30", "45"].map((minute) => <option key={minute} value={minute}>{minute}</option>)}</select></span></label></div>
+              <div className="date-time-group"><label><span>日期 *</span><input type="date" required value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></label><label className="compact-time"><span>具体时间（选填）</span><select aria-label="具体时间" value={form.time ?? ""} onChange={(e) => setForm({ ...form, time: e.target.value })}><option value="">00:00</option>{Array.from({ length: 96 }, (_, index) => { const value = `${pad(Math.floor(index / 4))}:${pad((index % 4) * 15)}`; return <option key={value} value={value}>{value}</option>; })}</select></label></div>
               <label><span>进度</span><select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as EventType })}>{Object.entries(typeMeta).map(([key, meta]) => <option key={key} value={key}>{meta.label}</option>)}</select></label>
               <label className="full"><span>备注</span><textarea rows={5} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder="面试轮次、测评链接、需要准备的内容……" /></label>
             </div>
