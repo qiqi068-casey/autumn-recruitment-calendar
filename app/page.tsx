@@ -68,6 +68,7 @@ export default function Home() {
   const [form, setForm] = useState(emptyForm());
   const [hydrated, setHydrated] = useState(false);
   const [memo, setMemo] = useState("");
+  const [confirmMemoClear, setConfirmMemoClear] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem("autumn-recruitment-events");
@@ -165,6 +166,12 @@ export default function Home() {
     setForm({ ...form, time: hour ? `${hour}:${minute || "00"}` : "" });
   }
 
+  function toggleCompleted(id: string) {
+    setEvents((all) => all.map((event) => event.id === id
+      ? { ...event, status: event.status === "done" ? "todo" : "done" }
+      : event));
+  }
+
   const selectedEvents = filtered.filter((e) => e.date === selectedDate);
   const monthLabel = `${month.getFullYear()}年 ${month.getMonth() + 1}月`;
   const nearTermEndKey = offsetDate(6);
@@ -245,11 +252,13 @@ export default function Home() {
           <div className="side-heading"><div><p>{new Date(`${selectedDate}T12:00:00`).toLocaleDateString("zh-CN", { month: "long", day: "numeric", weekday: "short" })}</p><h2>当日安排</h2></div><button onClick={() => openCreate(selectedDate)} aria-label="添加当天安排">＋</button></div>
           <div className="selected-list">
             {selectedEvents.length ? selectedEvents.map((event) => (
-              <button className="agenda-item" key={event.id} onClick={() => openEdit(event)}>
-                <span className={`agenda-line ${typeMeta[event.type].color}`} />
-                <span className="agenda-copy"><small>{event.time || typeMeta[event.type].label}</small><strong>{event.company}</strong><em>{event.role}</em></span>
-                <span className={`status ${event.status}`}>{statusLabel[event.status]}</span>
-              </button>
+              <div className={`agenda-item ${event.status === "done" ? "completed" : ""}`} key={event.id}>
+                <button className="agenda-open" type="button" onClick={() => openEdit(event)} aria-label={`编辑 ${event.company} ${event.role}`}>
+                  <span className={`agenda-line ${typeMeta[event.type].color}`} />
+                  <span className="agenda-copy"><small>{typeMeta[event.type].label}</small><strong>{event.company}</strong><em>{event.role}{event.time && <span className="agenda-time"> · {event.time}</span>}</em></span>
+                </button>
+                <button className="completion-check" type="button" aria-label={event.status === "done" ? "标记为未完成" : "标记为已完成"} aria-pressed={event.status === "done"} onClick={() => toggleCompleted(event.id)}><span>✓</span></button>
+              </div>
             )) : <div className="empty"><span>☕</span><strong>这一天还没有安排</strong><p>留一点空白，也留一点呼吸。</p></div>}
           </div>
 
@@ -257,7 +266,7 @@ export default function Home() {
             <div className="memo-title"><div><p>EXTRA NOTES</p><h3>秋招备忘</h3></div><span>自动保存</span></div>
             <p className="memo-hint">记录由秋招延伸出来的其它事情、灵感或提醒。</p>
             <textarea value={memo} onChange={(e) => setMemo(e.target.value)} aria-label="秋招备忘" placeholder={'例如：\n· 更新作品集首页\n· 联系学长了解业务方向\n· 周五前打印成绩单'} />
-            <div className="memo-footer"><span>{memo.length} 字</span><button type="button" onClick={() => setMemo("")} disabled={!memo}>清空</button></div>
+            <div className="memo-footer"><span>{memo.length} 字</span><button className="trash-button" type="button" onClick={() => setConfirmMemoClear(true)} disabled={!memo} aria-label="清空秋招备忘"><i /></button></div>
           </div>
         </aside>
       </section>
@@ -272,11 +281,21 @@ export default function Home() {
               <label><span>日期 *</span><input type="date" required value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></label>
               <label><span>具体时间</span><span className="time-selects"><select aria-label="小时" value={form.time?.split(":")[0] ?? ""} onChange={(e) => updateTime("hour", e.target.value)}><option value="">小时</option>{Array.from({ length: 24 }, (_, hour) => pad(hour)).map((hour) => <option key={hour} value={hour}>{hour} 时</option>)}</select><b>:</b><select aria-label="分钟" value={form.time?.split(":")[1] ?? "00"} disabled={!form.time} onChange={(e) => updateTime("minute", e.target.value)}>{["00", "15", "30", "45"].map((minute) => <option key={minute} value={minute}>{minute} 分</option>)}</select></span></label>
               <label><span>安排类型</span><select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as EventType })}>{Object.entries(typeMeta).map(([key, meta]) => <option key={key} value={key}>{meta.label}</option>)}</select></label>
-              <label><span>当前状态</span><select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as EventStatus })}>{Object.entries(statusLabel).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
               <label className="full"><span>备注</span><textarea rows={3} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder="面试轮次、测评链接、需要准备的内容……" /></label>
             </div>
             <div className="modal-actions">{editingId && <button type="button" className="danger" onClick={removeEvent}>删除</button>}<span /><button type="button" className="secondary" onClick={() => setModalOpen(false)}>取消</button><button className="primary" type="submit">保存安排</button></div>
           </form>
+        </div>
+      )}
+
+      {confirmMemoClear && (
+        <div className="confirm-backdrop" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) setConfirmMemoClear(false); }}>
+          <div className="confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-description">
+            <span className="confirm-icon"><i /></span>
+            <h2 id="confirm-title">确认清空备忘？</h2>
+            <p id="confirm-description">清空后无法恢复，已记录的备忘内容将全部删除。</p>
+            <div><button className="secondary" type="button" onClick={() => setConfirmMemoClear(false)}>取消</button><button className="confirm-danger" type="button" onClick={() => { setMemo(""); setConfirmMemoClear(false); }}>确认清空</button></div>
+          </div>
         </div>
       )}
     </main>
