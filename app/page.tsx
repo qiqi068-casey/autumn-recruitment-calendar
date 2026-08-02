@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
-type EventType = "deadline" | "application" | "assessment" | "interview";
+type EventType = "deadline" | "assessment" | "interview";
 type EventStatus = "todo" | "progress" | "done";
 type RecruitEvent = {
   id: string;
@@ -17,7 +17,6 @@ type RecruitEvent = {
 
 const typeMeta: Record<EventType, { label: string; short: string; color: string }> = {
   deadline: { label: "投递 DDL", short: "DDL", color: "coral" },
-  application: { label: "已投递", short: "投递", color: "blue" },
   assessment: { label: "笔试 / 测评", short: "测评", color: "purple" },
   interview: { label: "面试", short: "面试", color: "green" },
 };
@@ -44,10 +43,10 @@ const holidays2026: Record<string, string> = {
 
 const initialEvents: RecruitEvent[] = [
   { id: "1", company: "字节跳动", role: "产品经理", date: offsetDate(1), type: "deadline", status: "todo", note: "完善项目经历后投递" },
-  { id: "2", company: "腾讯", role: "用户研究", date: todayKey, type: "application", status: "done", note: "官网校招渠道" },
+  { id: "2", company: "腾讯", role: "用户研究", date: todayKey, type: "deadline", status: "done", note: "官网校招渠道" },
   { id: "3", company: "美团", role: "商业分析", date: offsetDate(2), time: "19:00", type: "assessment", status: "todo", note: "提前测试摄像头" },
   { id: "4", company: "阿里巴巴", role: "策略运营", date: offsetDate(4), time: "14:30", type: "interview", status: "progress", note: "一面｜业务面" },
-  { id: "5", company: "小红书", role: "社区运营", date: offsetDate(-2), type: "application", status: "done" },
+  { id: "5", company: "小红书", role: "社区运营", date: offsetDate(-2), type: "deadline", status: "done" },
   { id: "6", company: "京东", role: "管培生", date: offsetDate(7), type: "deadline", status: "todo" },
 ];
 
@@ -78,7 +77,10 @@ export default function Home() {
   useEffect(() => {
     const saved = localStorage.getItem("autumn-recruitment-events");
     if (saved) {
-      try { setEvents(JSON.parse(saved)); } catch { /* keep demo data */ }
+      try {
+        const parsed = JSON.parse(saved) as Array<RecruitEvent & { type: EventType | "application" }>;
+        setEvents(parsed.map((event) => ({ ...event, type: event.type === "application" ? "deadline" : event.type })));
+      } catch { /* keep demo data */ }
     }
     setMemo(localStorage.getItem("autumn-recruitment-memo") ?? "");
     setHydrated(true);
@@ -135,7 +137,7 @@ export default function Home() {
   const completedWeekInterviews = weekInterviews.filter((event) => event.status === "done");
   const weekRangeLabel = `${weekStartDate.getMonth() + 1}.${weekStartDate.getDate()} — ${weekEndDate.getMonth() + 1}.${weekEndDate.getDate()}`;
   const stats = {
-    applications: new Set(events.filter((event) => event.type === "application" && event.status === "done").map((event) => event.company.trim().toLowerCase())).size,
+    applications: new Set(events.filter((event) => event.type === "deadline" && event.status === "done").map((event) => event.company.trim().toLowerCase())).size,
     weeklyTotal: weekEvents.length,
     weeklyCompleted: completedWeekEvents.length,
     weeklyInterviews: weekInterviews.length,
@@ -241,7 +243,7 @@ export default function Home() {
               <button className="today-btn" onClick={() => { const d = new Date(); setMonth(new Date(d.getFullYear(), d.getMonth(), 1)); setSelectedDate(todayKey); }}>今天</button>
             </div>
             <div className="filters">
-              {(["all", "deadline", "application", "assessment", "interview"] as const).map((item) => (
+              {(["all", "deadline", "assessment", "interview"] as const).map((item) => (
                 <button key={item} className={filter === item ? "active" : ""} onClick={() => setFilter(item)}>
                   {item === "all" ? "全部" : typeMeta[item].label}
                 </button>
