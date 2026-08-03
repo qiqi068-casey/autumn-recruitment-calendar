@@ -41,6 +41,46 @@ const holidays2026: Record<string, string> = {
   "2026-10-01": "国庆", "2026-10-02": "国庆", "2026-10-03": "国庆", "2026-10-04": "国庆", "2026-10-05": "国庆", "2026-10-06": "国庆", "2026-10-07": "国庆",
 };
 
+type HolidayDay = { label: string; kind: "holiday" | "workday" | "statutory" };
+
+const holidayCalendar: Record<string, HolidayDay> = {
+  // 2024—2026 entries follow the annual State Council holiday notices.
+  "2024-01-01": { label: "元旦", kind: "holiday" },
+  ...Object.fromEntries(["2024-02-10", "2024-02-11", "2024-02-12", "2024-02-13", "2024-02-14", "2024-02-15", "2024-02-16", "2024-02-17"].map((date) => [date, { label: "春节", kind: "holiday" }])),
+  "2024-02-04": { label: "班", kind: "workday" }, "2024-02-18": { label: "班", kind: "workday" },
+  ...Object.fromEntries(["2024-04-04", "2024-04-05", "2024-04-06"].map((date) => [date, { label: "清明", kind: "holiday" }])),
+  "2024-04-07": { label: "班", kind: "workday" },
+  ...Object.fromEntries(["2024-05-01", "2024-05-02", "2024-05-03", "2024-05-04", "2024-05-05"].map((date) => [date, { label: "劳动节", kind: "holiday" }])),
+  "2024-04-28": { label: "班", kind: "workday" }, "2024-05-11": { label: "班", kind: "workday" },
+  ...Object.fromEntries(["2024-06-08", "2024-06-09", "2024-06-10"].map((date) => [date, { label: "端午", kind: "holiday" }])),
+  ...Object.fromEntries(["2024-09-15", "2024-09-16", "2024-09-17"].map((date) => [date, { label: "中秋", kind: "holiday" }])),
+  "2024-09-14": { label: "班", kind: "workday" },
+  ...Object.fromEntries(["2024-10-01", "2024-10-02", "2024-10-03", "2024-10-04", "2024-10-05", "2024-10-06", "2024-10-07"].map((date) => [date, { label: "国庆", kind: "holiday" }])),
+  "2024-09-29": { label: "班", kind: "workday" }, "2024-10-12": { label: "班", kind: "workday" },
+
+  "2025-01-01": { label: "元旦", kind: "holiday" },
+  ...Object.fromEntries(["2025-01-28", "2025-01-29", "2025-01-30", "2025-01-31", "2025-02-01", "2025-02-02", "2025-02-03", "2025-02-04"].map((date) => [date, { label: "春节", kind: "holiday" }])),
+  "2025-01-26": { label: "班", kind: "workday" }, "2025-02-08": { label: "班", kind: "workday" },
+  ...Object.fromEntries(["2025-04-04", "2025-04-05", "2025-04-06"].map((date) => [date, { label: "清明", kind: "holiday" }])),
+  ...Object.fromEntries(["2025-05-01", "2025-05-02", "2025-05-03", "2025-05-04", "2025-05-05"].map((date) => [date, { label: "劳动节", kind: "holiday" }])),
+  "2025-04-27": { label: "班", kind: "workday" },
+  ...Object.fromEntries(["2025-05-31", "2025-06-01", "2025-06-02"].map((date) => [date, { label: "端午", kind: "holiday" }])),
+  ...Object.fromEntries(["2025-10-01", "2025-10-02", "2025-10-03", "2025-10-04", "2025-10-05", "2025-10-06", "2025-10-07", "2025-10-08"].map((date) => [date, { label: "国庆·中秋", kind: "holiday" }])),
+  "2025-09-28": { label: "班", kind: "workday" }, "2025-10-11": { label: "班", kind: "workday" },
+
+  "2026-01-04": { label: "班", kind: "workday" }, "2026-02-14": { label: "班", kind: "workday" }, "2026-02-28": { label: "班", kind: "workday" },
+  "2026-05-09": { label: "班", kind: "workday" }, "2026-09-20": { label: "班", kind: "workday" }, "2026-10-10": { label: "班", kind: "workday" },
+
+  // The 2027 adjustment notice is not published yet; these are statutory dates only.
+  "2027-01-01": { label: "元旦·法定", kind: "statutory" },
+  "2027-02-05": { label: "春节·法定", kind: "statutory" }, "2027-02-06": { label: "春节·法定", kind: "statutory" }, "2027-02-07": { label: "春节·法定", kind: "statutory" }, "2027-02-08": { label: "春节·法定", kind: "statutory" },
+  "2027-04-05": { label: "清明·法定", kind: "statutory" },
+  "2027-05-01": { label: "劳动节·法定", kind: "statutory" }, "2027-05-02": { label: "劳动节·法定", kind: "statutory" },
+  "2027-06-09": { label: "端午·法定", kind: "statutory" },
+  "2027-09-15": { label: "中秋·法定", kind: "statutory" },
+  "2027-10-01": { label: "国庆·法定", kind: "statutory" }, "2027-10-02": { label: "国庆·法定", kind: "statutory" }, "2027-10-03": { label: "国庆·法定", kind: "statutory" },
+};
+
 const initialEvents: RecruitEvent[] = [
   { id: "1", company: "字节跳动", role: "产品经理", date: offsetDate(1), type: "deadline", status: "todo", note: "完善项目经历后投递" },
   { id: "2", company: "腾讯", role: "用户研究", date: todayKey, type: "deadline", status: "done", note: "官网校招渠道" },
@@ -299,10 +339,12 @@ export default function Home() {
                     const dayEvents = filtered.filter((e) => e.date === key);
                     const weekend = date.getDay() === 6 ? "saturday" : date.getDay() === 0 ? "sunday" : "";
                     const nearTerm = key >= weekStartKey && key <= weekEndKey;
-                    const holiday = holidays2026[key];
-                    return <button key={key} className={`day-cell ${weekend} ${holiday ? "holiday" : ""} ${nearTerm ? "near-term" : ""} ${key === todayKey ? "today" : ""} ${key === selectedDate ? "selected" : ""}`} onClick={() => setSelectedDate(key)} onDoubleClick={() => openCreate(key)}>
+                    const extraHoliday = holidayCalendar[key];
+                    const holiday = extraHoliday ?? (holidays2026[key] ? { label: holidays2026[key], kind: "holiday" as const } : undefined);
+                    const holidayClass = holiday ? (holiday.kind === "workday" ? "makeup-workday" : holiday.kind === "statutory" ? "statutory-holiday" : "holiday") : "";
+                    return <button key={key} className={`day-cell ${weekend} ${holidayClass} ${nearTerm ? "near-term" : ""} ${key === todayKey ? "today" : ""} ${key === selectedDate ? "selected" : ""}`} onClick={() => setSelectedDate(key)} onDoubleClick={() => openCreate(key)} title={holiday?.kind === "statutory" ? "2027 年调休安排待国务院办公厅通知" : undefined}>
                       <span className="day-number">{date.getDate()}</span>
-                      {holiday && <span className="holiday-label">{holiday}</span>}
+                      {holiday && <span className={`holiday-label ${holiday.kind}`}>{holiday.label}</span>}
                       <div className="day-events">
                         {dayEvents.slice(0, 2).map((event) => <span key={event.id} className={`event-chip ${typeMeta[event.type].color} ${event.status === "done" ? "completed" : "pending"}`}><i />{event.company}<b>{event.status === "done" ? "已完成" : typeMeta[event.type].short}</b></span>)}
                         {dayEvents.length > 2 && <span className="more">＋{dayEvents.length - 2}</span>}
