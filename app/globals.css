@@ -63,5 +63,6 @@ button { color:inherit; }
 .day-cell.makeup-workday{background:#f5f6f4}
 .holiday-label.statutory{color:#9a6719;background:#fff0c9}
 .holiday-label.workday{color:#5f6b6d;background:#e7ecea}
+.application-link{align-self:center;margin-right:4px;border:1px solid #d9e3df;border-radius:7px;padding:4px 6px;color:#4f7f8e;font-size:9px;font-weight:700;text-decoration:none;background:#f7faf9}.application-link:hover{background:#edf5f2}
 @media(max-width:760px){.date-time-group{grid-template-columns:1fr}}
 .month-picker span::after{content:none}

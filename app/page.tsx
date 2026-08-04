@@ -12,6 +12,7 @@ type RecruitEvent = {
   time?: string;
   type: EventType;
   status: EventStatus;
+  sourceUrl?: string;
   note?: string;
 };
 
@@ -97,6 +98,7 @@ const emptyForm = (): Omit<RecruitEvent, "id"> => ({
   time: "",
   type: "deadline",
   status: "todo",
+  sourceUrl: "",
   note: "",
 });
 
@@ -224,7 +226,7 @@ export default function Home() {
 
   function openEdit(event: RecruitEvent) {
     setEditingId(event.id);
-    setForm({ company: event.company, role: event.role, date: event.date, time: event.time ?? "", type: event.type, status: event.status, note: event.note ?? "" });
+    setForm({ company: event.company, role: event.role, date: event.date, time: event.time ?? "", type: event.type, status: event.status, sourceUrl: event.sourceUrl ?? "", note: event.note ?? "" });
     setModalOpen(true);
   }
 
@@ -368,6 +370,7 @@ export default function Home() {
                   <span className="agenda-copy"><span className="agenda-mainline"><strong>{event.company}</strong><em>{event.role}{event.time && <span className="agenda-time"> · {event.time}</span>}</em></span></span>
                   <span className={`agenda-type ${typeMeta[event.type].color}`}>{typeMeta[event.type].short}</span>
                 </button>
+                {event.sourceUrl && <a className="application-link" href={event.sourceUrl} target="_blank" rel="noreferrer" aria-label={`打开 ${event.company} ${event.role} 的投递链接`}>链接</a>}
                 <button className="completion-check" type="button" aria-label={event.status === "done" ? "标记为未完成" : "标记为已完成"} aria-pressed={event.status === "done"} onClick={() => toggleCompleted(event.id)}><span>✓</span></button>
               </div>
             )) : <div className="empty"><span>☕</span><strong>这一天还没有安排</strong><p>留一点空白，也留一点呼吸。</p></div>}
@@ -390,6 +393,7 @@ export default function Home() {
               <label><span>岗位名称 *</span><input required value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} placeholder="例如：产品经理" /></label>
               <div className="date-time-group"><label><span>日期 *</span><input type="date" required value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></label><label className="compact-time"><span>具体时间（选填）</span><select aria-label="具体时间" value={form.time ?? ""} onChange={(e) => setForm({ ...form, time: e.target.value })}><option value="">00:00</option>{Array.from({ length: 96 }, (_, index) => { const value = `${pad(Math.floor(index / 4))}:${pad((index % 4) * 15)}`; return <option key={value} value={value}>{value}</option>; })}</select></label></div>
               <label><span>进度</span><select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as EventType })}>{Object.entries(typeMeta).map(([key, meta]) => <option key={key} value={key}>{meta.label}</option>)}</select></label>
+              <label className="full"><span>招聘 / 投递链接</span><input type="url" value={form.sourceUrl ?? ""} onChange={(e) => setForm({ ...form, sourceUrl: e.target.value })} placeholder="https://…（以后可从记录中直接打开）" /></label>
               <label className="full"><span>备注</span><textarea rows={5} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder="面试轮次、测评链接、需要准备的内容……" /></label>
             </div>
             <div className="modal-actions">{editingId && <button type="button" className="danger" onClick={() => setConfirmEventDelete(true)}>删除</button>}<span /><button type="button" className="secondary" onClick={() => setModalOpen(false)}>取消</button><button className="primary" type="submit">保存</button></div>
