@@ -41,6 +41,8 @@ const holidays2026: Record<string, string> = {
   "2026-09-25": "中秋", "2026-09-26": "中秋", "2026-09-27": "中秋",
   "2026-10-01": "国庆", "2026-10-02": "国庆", "2026-10-03": "国庆", "2026-10-04": "国庆", "2026-10-05": "国庆", "2026-10-06": "国庆", "2026-10-07": "国庆",
 };
+type IntentLevel = "high" | "low";
+type WatchCompany = { id: string; name: string; intent: IntentLevel };
 
 type HolidayDay = { label: string; kind: "holiday" | "workday" | "statutory" };
 
@@ -113,6 +115,9 @@ export default function Home() {
   const [form, setForm] = useState(emptyForm());
   const [hydrated, setHydrated] = useState(false);
   const [memo, setMemo] = useState("");
+  const [watchCompanies, setWatchCompanies] = useState<WatchCompany[]>([]);
+  const [watchCompanyDraft, setWatchCompanyDraft] = useState("");
+  const [watchIntent, setWatchIntent] = useState<IntentLevel>("high");
   const [confirmMemoClear, setConfirmMemoClear] = useState(false);
   const [confirmEventDelete, setConfirmEventDelete] = useState(false);
   const [monthMenuOpen, setMonthMenuOpen] = useState(false);
@@ -128,6 +133,10 @@ export default function Home() {
       } catch { /* keep demo data */ }
     }
     setMemo(localStorage.getItem("autumn-recruitment-memo") ?? "");
+    const savedCompanies = localStorage.getItem("autumn-recruitment-watch-companies");
+    if (savedCompanies) {
+      try { setWatchCompanies(JSON.parse(savedCompanies) as WatchCompany[]); } catch { /* keep an empty watch list */ }
+    }
     setHydrated(true);
   }, []);
 
@@ -138,6 +147,10 @@ export default function Home() {
   useEffect(() => {
     if (hydrated) localStorage.setItem("autumn-recruitment-memo", memo);
   }, [memo, hydrated]);
+
+  useEffect(() => {
+    if (hydrated) localStorage.setItem("autumn-recruitment-watch-companies", JSON.stringify(watchCompanies));
+  }, [watchCompanies, hydrated]);
 
   useEffect(() => {
     if (!modalOpen) return;
@@ -252,6 +265,22 @@ export default function Home() {
     setEvents((all) => all.map((event) => event.id === id
       ? { ...event, status: event.status === "done" ? "todo" : "done" }
       : event));
+  }
+
+  function addWatchCompany(e: FormEvent) {
+    e.preventDefault();
+    const name = watchCompanyDraft.trim();
+    if (!name || watchCompanies.some((company) => company.name.toLowerCase() === name.toLowerCase())) return;
+    setWatchCompanies((companies) => [...companies, { id: crypto.randomUUID(), name, intent: watchIntent }]);
+    setWatchCompanyDraft("");
+  }
+
+  function toggleWatchIntent(id: string) {
+    setWatchCompanies((companies) => companies.map((company) => company.id === id ? { ...company, intent: company.intent === "high" ? "low" : "high" } : company));
+  }
+
+  function removeWatchCompany(id: string) {
+    setWatchCompanies((companies) => companies.filter((company) => company.id !== id));
   }
 
   const selectedEvents = filtered
@@ -380,6 +409,24 @@ export default function Home() {
             <div className="memo-title"><div><h3>备忘录</h3></div><span>自动保存</span></div>
             <textarea value={memo} onChange={(e) => setMemo(e.target.value)} aria-label="备忘录" />
             <div className="memo-footer"><span>{memo.length} 字</span><button className="trash-button" type="button" onClick={() => setConfirmMemoClear(true)} disabled={!memo} aria-label="清空秋招备忘"><i /></button></div>
+          </div>
+
+          <div className="watchlist-panel">
+            <div className="watchlist-title"><div><p>APPLICATION QUEUE</p><h3>待投递公司</h3></div><span>{watchCompanies.length} 家</span></div>
+            <form className="watchlist-add" onSubmit={addWatchCompany}>
+              <input value={watchCompanyDraft} onChange={(e) => setWatchCompanyDraft(e.target.value)} placeholder="输入公司名称" aria-label="待投递公司名称" />
+              <select value={watchIntent} onChange={(e) => setWatchIntent(e.target.value as IntentLevel)} aria-label="选择意向度"><option value="high">高意向</option><option value="low">低意向</option></select>
+              <button type="submit" disabled={!watchCompanyDraft.trim()} aria-label="添加待投递公司">＋</button>
+            </form>
+            <div className="intent-groups">
+              {(["high", "low"] as const).map((intent) => {
+                const companies = watchCompanies.filter((company) => company.intent === intent);
+                return <section className={`intent-group ${intent}`} key={intent}>
+                  <div className="intent-heading"><span><i />{intent === "high" ? "高意向度" : "低意向度"}</span><b>{companies.length}</b></div>
+                  <div className="intent-list">{companies.length ? companies.map((company) => <div className="intent-item" key={company.id}><strong>{company.name}</strong><button type="button" onClick={() => toggleWatchIntent(company.id)} title={intent === "high" ? "移至低意向" : "移至高意向"}>{intent === "high" ? "降" : "升"}</button><button className="remove" type="button" onClick={() => removeWatchCompany(company.id)} aria-label={`删除 ${company.name}`}>×</button></div>) : <p>暂时没有公司</p>}</div>
+                </section>;
+              })}
+            </div>
           </div>
         </aside>
       </section>
