@@ -64,6 +64,5 @@ button { color:inherit; }
 .holiday-label.statutory{color:#9a6719;background:#fff0c9}
 .holiday-label.workday{color:#5f6b6d;background:#e7ecea}
 .application-link{align-self:center;margin-right:4px;border:1px solid #d9e3df;border-radius:7px;padding:4px 6px;color:#4f7f8e;font-size:9px;font-weight:700;text-decoration:none;background:#f7faf9}.application-link:hover{background:#edf5f2}
-.auto-link-row{display:flex;gap:8px}.auto-link-row input{flex:1}.auto-link-row button{flex:none;border:1px solid #4f7f8e;border-radius:9px;padding:0 13px;background:#eef6f4;color:#315f6d;font-weight:750;cursor:pointer}.auto-link-row button:disabled{cursor:default;opacity:.5}.parse-message{display:block;margin-top:6px;color:#5d7378;font-size:11px;line-height:1.45}
 @media(max-width:760px){.date-time-group{grid-template-columns:1fr}}
 .month-picker span::after{content:none}
