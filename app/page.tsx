@@ -117,6 +117,8 @@ export default function Home() {
   const [confirmEventDelete, setConfirmEventDelete] = useState(false);
   const [monthMenuOpen, setMonthMenuOpen] = useState(false);
   const [pickerYear, setPickerYear] = useState(() => new Date().getFullYear());
+  const [parsingLink, setParsingLink] = useState(false);
+  const [linkParseMessage, setLinkParseMessage] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -221,13 +223,46 @@ export default function Home() {
   function openCreate(date = selectedDate) {
     setEditingId(null);
     setForm({ ...emptyForm(), date });
+    setLinkParseMessage("");
     setModalOpen(true);
   }
 
   function openEdit(event: RecruitEvent) {
     setEditingId(event.id);
     setForm({ company: event.company, role: event.role, date: event.date, time: event.time ?? "", type: event.type, status: event.status, sourceUrl: event.sourceUrl ?? "", note: event.note ?? "" });
+    setLinkParseMessage("");
     setModalOpen(true);
+  }
+
+  async function parseJobLink() {
+    const sourceUrl = form.sourceUrl?.trim();
+    if (!sourceUrl) return setLinkParseMessage("请先粘贴招聘或投递链接");
+    setParsingLink(true);
+    setLinkParseMessage("");
+    try {
+      const response = await fetch("/api/parse-job", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ url: sourceUrl }) });
+      const result = await response.json() as { company?: string; role?: string; location?: string; finalUrl?: string; error?: string };
+      if (!response.ok) throw new Error(result.error || "链接解析失败");
+      const now = new Date();
+      const minutes = Math.floor(now.getMinutes() / 15) * 15;
+      const parsedTime = `${pad(now.getHours())}:${pad(minutes)}`;
+      setForm((current) => ({
+        ...current,
+        company: result.company || current.company,
+        role: result.role || current.role,
+        date: toDateKey(now),
+        time: parsedTime,
+        type: "deadline",
+        status: "done",
+        sourceUrl: result.finalUrl || current.sourceUrl,
+        note: result.location && !current.note ? `工作地点：${result.location}` : current.note,
+      }));
+      setLinkParseMessage(result.company && result.role ? "已识别公司和岗位，并填入当前投递时间" : "链接已读取，请补充未识别出的公司或岗位");
+    } catch (error) {
+      setLinkParseMessage(error instanceof Error ? error.message : "链接解析失败，请手动补充信息");
+    } finally {
+      setParsingLink(false);
+    }
   }
 
   function saveEvent(e: FormEvent) {
@@ -393,7 +428,7 @@ export default function Home() {
               <label><span>岗位名称 *</span><input required value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} placeholder="例如：产品经理" /></label>
               <div className="date-time-group"><label><span>日期 *</span><input type="date" required value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></label><label className="compact-time"><span>具体时间（选填）</span><select aria-label="具体时间" value={form.time ?? ""} onChange={(e) => setForm({ ...form, time: e.target.value })}><option value="">00:00</option>{Array.from({ length: 96 }, (_, index) => { const value = `${pad(Math.floor(index / 4))}:${pad((index % 4) * 15)}`; return <option key={value} value={value}>{value}</option>; })}</select></label></div>
               <label><span>进度</span><select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as EventType })}>{Object.entries(typeMeta).map(([key, meta]) => <option key={key} value={key}>{meta.label}</option>)}</select></label>
-              <label className="full"><span>招聘 / 投递链接</span><input type="url" value={form.sourceUrl ?? ""} onChange={(e) => setForm({ ...form, sourceUrl: e.target.value })} placeholder="https://…（以后可从记录中直接打开）" /></label>
+              <label className="full"><span>招聘 / 投递链接</span><span className="auto-link-row"><input type="url" value={form.sourceUrl ?? ""} onChange={(e) => { setForm({ ...form, sourceUrl: e.target.value }); setLinkParseMessage(""); }} onPaste={() => setLinkParseMessage("链接已粘贴，点击自动识别") } placeholder="粘贴链接，自动填写公司、岗位和投递时间" /><button type="button" onClick={parseJobLink} disabled={parsingLink || !form.sourceUrl?.trim()}>{parsingLink ? "识别中…" : "自动识别"}</button></span>{linkParseMessage && <small className="parse-message" aria-live="polite">{linkParseMessage}</small>}</label>
               <label className="full"><span>备注</span><textarea rows={5} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder="面试轮次、测评链接、需要准备的内容……" /></label>
             </div>
             <div className="modal-actions">{editingId && <button type="button" className="danger" onClick={() => setConfirmEventDelete(true)}>删除</button>}<span /><button type="button" className="secondary" onClick={() => setModalOpen(false)}>取消</button><button className="primary" type="submit">保存</button></div>
