@@ -26,12 +26,6 @@ const pad = (n: number) => String(n).padStart(2, "0");
 const toDateKey = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const todayKey = toDateKey(new Date());
 
-function offsetDate(days: number) {
-  const d = new Date();
-  d.setDate(d.getDate() + days);
-  return toDateKey(d);
-}
-
 const holidays2026: Record<string, string> = {
   "2026-01-01": "元旦", "2026-01-02": "元旦", "2026-01-03": "元旦",
   "2026-02-15": "春节", "2026-02-16": "春节", "2026-02-17": "春节", "2026-02-18": "春节", "2026-02-19": "春节", "2026-02-20": "春节", "2026-02-21": "春节", "2026-02-22": "春节", "2026-02-23": "春节",
@@ -84,14 +78,7 @@ const holidayCalendar: Record<string, HolidayDay> = {
   "2027-10-01": { label: "国庆·法定", kind: "statutory" }, "2027-10-02": { label: "国庆·法定", kind: "statutory" }, "2027-10-03": { label: "国庆·法定", kind: "statutory" },
 };
 
-const initialEvents: RecruitEvent[] = [
-  { id: "1", company: "字节跳动", role: "产品经理", date: offsetDate(1), type: "deadline", status: "todo", note: "完善项目经历后投递" },
-  { id: "2", company: "腾讯", role: "用户研究", date: todayKey, type: "deadline", status: "done", note: "官网校招渠道" },
-  { id: "3", company: "美团", role: "商业分析", date: offsetDate(2), time: "19:00", type: "assessment", status: "todo", note: "提前测试摄像头" },
-  { id: "4", company: "阿里巴巴", role: "策略运营", date: offsetDate(4), time: "14:30", type: "interview", status: "progress", note: "一面｜业务面" },
-  { id: "5", company: "小红书", role: "社区运营", date: offsetDate(-2), type: "deadline", status: "done" },
-  { id: "6", company: "京东", role: "管培生", date: offsetDate(7), type: "deadline", status: "todo" },
-];
+const initialEvents: RecruitEvent[] = [];
 
 const emptyForm = (): Omit<RecruitEvent, "id"> => ({
   company: "",
