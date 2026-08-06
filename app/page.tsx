@@ -129,7 +129,17 @@ export default function Home() {
       } catch { /* keep demo data */ }
     }
     setMemo(localStorage.getItem("autumn-recruitment-memo") ?? "");
-    setLanguage(localStorage.getItem("autumn-recruitment-language") === "zh" ? "zh" : "en");
+    const savedLanguage = localStorage.getItem("autumn-recruitment-language");
+    const isPersonalSite = window.location.hostname.endsWith(".chatgpt.site");
+    const personalDefaultsApplied = localStorage.getItem("autumn-recruitment-personal-defaults-v1") === "done";
+    if (isPersonalSite && !personalDefaultsApplied) {
+      setLanguage("zh");
+      localStorage.setItem("autumn-recruitment-personal-defaults-v1", "done");
+    } else if (savedLanguage === "zh" || savedLanguage === "en") {
+      setLanguage(savedLanguage);
+    } else {
+      setLanguage(isPersonalSite ? "zh" : "en");
+    }
     const savedCompanies = localStorage.getItem("autumn-recruitment-watch-companies");
     if (savedCompanies) {
       try { setWatchCompanies(JSON.parse(savedCompanies) as WatchCompany[]); } catch { /* keep an empty watch list */ }
@@ -190,7 +200,11 @@ export default function Home() {
   }
 
   useLayoutEffect(() => {
-    goToMonth(new Date(), "auto");
+    const now = new Date();
+    const isPersonalSite = window.location.hostname.endsWith(".chatgpt.site");
+    const initialMonth = isPersonalSite ? new Date(now.getFullYear(), 7, 1) : now;
+    goToMonth(initialMonth, "auto");
+    if (isPersonalSite) setSelectedDate(toDateKey(initialMonth));
   }, []);
 
   function syncMonthFromScroll() {
