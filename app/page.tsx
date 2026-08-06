@@ -306,7 +306,9 @@ export default function Home() {
           <div><strong>{isZh ? "秋招日历" : "Recruitment Calendar"}</strong><span>{isZh ? "把每一次机会安排得刚刚好" : "Keep every opportunity on track"}</span></div>
         </div>
         <div className="header-actions">
-          <button className="language-toggle" type="button" onClick={() => setLanguage(isZh ? "en" : "zh")} aria-label={isZh ? "切换到英文" : "Switch to Chinese"}>{isZh ? "EN" : "中文"}</button>
+          <button className={`language-toggle ${isZh ? "is-zh" : "is-en"}`} type="button" onClick={() => setLanguage(isZh ? "en" : "zh")} aria-label={isZh ? "切换到英文" : "Switch to Chinese"} aria-pressed={isZh}>
+            <span>EN</span><span>中</span>
+          </button>
           <label className="search"><span>⌕</span><input ref={searchInputRef} value={query} onChange={(e) => setQuery(e.target.value)} placeholder={isZh ? "搜索公司或岗位" : "Search company or role"} aria-label={isZh ? "搜索公司或岗位" : "Search company or role"} /></label>
           <button className="primary search-button" onClick={() => searchInputRef.current?.focus()}>{isZh ? "搜索" : "Search"}</button>
         </div>
