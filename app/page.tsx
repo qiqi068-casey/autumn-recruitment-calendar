@@ -16,10 +16,16 @@ type RecruitEvent = {
   note?: string;
 };
 
-const typeMeta: Record<EventType, { label: string; short: string; color: string }> = {
+const typeMetaZh: Record<EventType, { label: string; short: string; color: string }> = {
   deadline: { label: "投递 DDL", short: "DDL", color: "coral" },
   assessment: { label: "笔试 / 测评", short: "测评", color: "purple" },
   interview: { label: "面试", short: "面试", color: "green" },
+};
+
+const typeMetaEn: Record<EventType, { label: string; short: string; color: string }> = {
+  deadline: { label: "Application DDL", short: "DDL", color: "coral" },
+  assessment: { label: "Test / Assessment", short: "Test", color: "purple" },
+  interview: { label: "Interview", short: "Interview", color: "green" },
 };
 
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -92,6 +98,7 @@ const emptyForm = (): Omit<RecruitEvent, "id"> => ({
 });
 
 export default function Home() {
+  const [language, setLanguage] = useState<"en" | "zh">("en");
   const [events, setEvents] = useState<RecruitEvent[]>(initialEvents);
   const [month, setMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [selectedDate, setSelectedDate] = useState(todayKey);
@@ -110,6 +117,8 @@ export default function Home() {
   const [monthMenuOpen, setMonthMenuOpen] = useState(false);
   const [pickerYear, setPickerYear] = useState(() => new Date().getFullYear());
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const isZh = language === "zh";
+  const typeMeta = isZh ? typeMetaZh : typeMetaEn;
 
   useEffect(() => {
     const saved = localStorage.getItem("autumn-recruitment-events");
@@ -120,6 +129,7 @@ export default function Home() {
       } catch { /* keep demo data */ }
     }
     setMemo(localStorage.getItem("autumn-recruitment-memo") ?? "");
+    setLanguage(localStorage.getItem("autumn-recruitment-language") === "zh" ? "zh" : "en");
     const savedCompanies = localStorage.getItem("autumn-recruitment-watch-companies");
     if (savedCompanies) {
       try { setWatchCompanies(JSON.parse(savedCompanies) as WatchCompany[]); } catch { /* keep an empty watch list */ }
@@ -138,6 +148,12 @@ export default function Home() {
   useEffect(() => {
     if (hydrated) localStorage.setItem("autumn-recruitment-watch-companies", JSON.stringify(watchCompanies));
   }, [watchCompanies, hydrated]);
+
+  useEffect(() => {
+    if (hydrated) localStorage.setItem("autumn-recruitment-language", language);
+    document.documentElement.lang = language === "zh" ? "zh-CN" : "en";
+    document.title = language === "zh" ? "秋招日历｜投递与面试进度管理" : "Recruitment Calendar | Application Tracker";
+  }, [language, hydrated]);
 
   useEffect(() => {
     if (!modalOpen) return;
@@ -278,41 +294,44 @@ export default function Home() {
       return (a.time || "99:99").localeCompare(b.time || "99:99");
     });
   const selectedDayTotal = events.filter((event) => event.date === selectedDate).length;
-  const monthLabel = `${month.getFullYear()}年 ${month.getMonth() + 1}月`;
+  const monthLabel = isZh
+    ? `${month.getFullYear()}年 ${month.getMonth() + 1}月`
+    : month.toLocaleDateString("en-US", { month: "long", year: "numeric" });
 
   return (
     <main className="app-shell">
       <header className="topbar">
         <div className="brand">
-          <div className="brand-mark">秋</div>
-          <div><strong>秋招日历</strong><span>把每一次机会安排得刚刚好</span></div>
+          <div className="brand-mark">{isZh ? "秋" : "A"}</div>
+          <div><strong>{isZh ? "秋招日历" : "Recruitment Calendar"}</strong><span>{isZh ? "把每一次机会安排得刚刚好" : "Keep every opportunity on track"}</span></div>
         </div>
         <div className="header-actions">
-          <label className="search"><span>⌕</span><input ref={searchInputRef} value={query} onChange={(e) => setQuery(e.target.value)} placeholder="搜索公司或岗位" aria-label="搜索公司或岗位" /></label>
-          <button className="primary search-button" onClick={() => searchInputRef.current?.focus()}>搜索</button>
+          <button className="language-toggle" type="button" onClick={() => setLanguage(isZh ? "en" : "zh")} aria-label={isZh ? "切换到英文" : "Switch to Chinese"}>{isZh ? "EN" : "中文"}</button>
+          <label className="search"><span>⌕</span><input ref={searchInputRef} value={query} onChange={(e) => setQuery(e.target.value)} placeholder={isZh ? "搜索公司或岗位" : "Search company or role"} aria-label={isZh ? "搜索公司或岗位" : "Search company or role"} /></label>
+          <button className="primary search-button" onClick={() => searchInputRef.current?.focus()}>{isZh ? "搜索" : "Search"}</button>
         </div>
       </header>
 
       <section className="intro">
         <div>
-          <p className="eyebrow">AUTUMN RECRUITMENT · {new Date().getFullYear()}</p>
+          <p className="eyebrow">{isZh ? "AUTUMN RECRUITMENT" : "RECRUITMENT SEASON"} · {new Date().getFullYear()}</p>
           <h1>Your offer is coming.</h1>
-          <p className="subtitle">集中管理投递截止、测评和面试，不错过每一个重要节点。</p>
+          <p className="subtitle">{isZh ? "集中管理投递截止、测评和面试，不错过每一个重要节点。" : "Track application deadlines, assessments and interviews in one place."}</p>
         </div>
         <div className="application-total-card">
-          <span>累计投递</span>
-          <strong>{stats.applications}<em>家公司</em></strong>
+          <span>{isZh ? "累计投递" : "Applications"}</span>
+          <strong>{stats.applications}<em>{isZh ? "家公司" : " companies"}</em></strong>
         </div>
       </section>
 
-      <section className="stats-grid" aria-label="秋招数据概览">
+      <section className="stats-grid" aria-label={isZh ? "秋招数据概览" : "Recruitment overview"}>
         <div className="progress-card coral">
-          <div className="progress-head"><div><small>本周待办进度 <span>{weekRangeLabel}</span></small><strong>{stats.weeklyCompleted}<em> / {stats.weeklyTotal} 项</em></strong></div></div>
-          <div className="progress-track" aria-label={`本周待办完成 ${weeklyProgress}%`}><i style={{ width: `${weeklyProgress}%` }} /></div>
+          <div className="progress-head"><div><small>{isZh ? "本周待办进度" : "Weekly task progress"} <span>{weekRangeLabel}</span></small><strong>{stats.weeklyCompleted}<em> / {stats.weeklyTotal} {isZh ? "项" : "tasks"}</em></strong></div></div>
+          <div className="progress-track" aria-label={`${isZh ? "本周待办完成" : "Weekly tasks completed"} ${weeklyProgress}%`}><i style={{ width: `${weeklyProgress}%` }} /></div>
         </div>
         <div className="progress-card green">
-          <div className="progress-head"><div><small>本周面试进度 <span>{weekRangeLabel}</span></small><strong>{stats.weeklyInterviewsCompleted}<em> / {stats.weeklyInterviews} 场</em></strong></div></div>
-          <div className="progress-track" aria-label={`本周面试完成 ${interviewProgress}%`}><i style={{ width: `${interviewProgress}%` }} /></div>
+          <div className="progress-head"><div><small>{isZh ? "本周面试进度" : "Weekly interview progress"} <span>{weekRangeLabel}</span></small><strong>{stats.weeklyInterviewsCompleted}<em> / {stats.weeklyInterviews} {isZh ? "场" : "interviews"}</em></strong></div></div>
+          <div className="progress-track" aria-label={`${isZh ? "本周面试完成" : "Weekly interviews completed"} ${interviewProgress}%`}><i style={{ width: `${interviewProgress}%` }} /></div>
         </div>
       </section>
 
@@ -320,26 +339,26 @@ export default function Home() {
         <div className="calendar-card">
           <div className="calendar-toolbar">
             <div className="month-switcher">
-              <button aria-label="上个月" onClick={() => goToMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}>‹</button>
+              <button aria-label={isZh ? "上个月" : "Previous month"} onClick={() => goToMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}>‹</button>
               <div className="month-picker-wrap">
                 <button className="month-picker" type="button" aria-haspopup="dialog" aria-expanded={monthMenuOpen} onClick={() => { setPickerYear(month.getFullYear()); setMonthMenuOpen((open) => !open); }}><span>{monthLabel}</span></button>
-                {monthMenuOpen && <div className="month-dropdown" role="dialog" aria-label="选择月份">
-                  <div className="month-dropdown-head"><button type="button" aria-label="上一年" onClick={() => setPickerYear((year) => Math.max(2024, year - 1))}>‹</button><strong>{pickerYear}年</strong><button type="button" aria-label="下一年" onClick={() => setPickerYear((year) => Math.min(2031, year + 1))}>›</button></div>
-                  <div className="month-options">{Array.from({ length: 12 }, (_, index) => <button type="button" key={index} className={pickerYear === month.getFullYear() && index === month.getMonth() ? "active" : ""} onClick={() => { goToMonth(new Date(pickerYear, index, 1)); setMonthMenuOpen(false); }}>{index + 1}月</button>)}</div>
+                {monthMenuOpen && <div className="month-dropdown" role="dialog" aria-label={isZh ? "选择月份" : "Choose month"}>
+                  <div className="month-dropdown-head"><button type="button" aria-label={isZh ? "上一年" : "Previous year"} onClick={() => setPickerYear((year) => Math.max(2024, year - 1))}>‹</button><strong>{pickerYear}{isZh ? "年" : ""}</strong><button type="button" aria-label={isZh ? "下一年" : "Next year"} onClick={() => setPickerYear((year) => Math.min(2031, year + 1))}>›</button></div>
+                  <div className="month-options">{Array.from({ length: 12 }, (_, index) => <button type="button" key={index} className={pickerYear === month.getFullYear() && index === month.getMonth() ? "active" : ""} onClick={() => { goToMonth(new Date(pickerYear, index, 1)); setMonthMenuOpen(false); }}>{isZh ? `${index + 1}月` : new Date(2024, index, 1).toLocaleDateString("en-US", { month: "short" })}</button>)}</div>
                 </div>}
               </div>
-              <button aria-label="下个月" onClick={() => goToMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}>›</button>
-              <button className="today-btn" onClick={() => { goToMonth(new Date()); setSelectedDate(todayKey); }}>今天</button>
+              <button aria-label={isZh ? "下个月" : "Next month"} onClick={() => goToMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}>›</button>
+              <button className="today-btn" onClick={() => { goToMonth(new Date()); setSelectedDate(todayKey); }}>{isZh ? "今天" : "Today"}</button>
             </div>
             <div className="filters">
               {(["all", "deadline", "assessment", "interview"] as const).map((item) => (
                 <button key={item} className={filter === item ? "active" : ""} onClick={() => setFilter(item)}>
-                  {item === "all" ? "全部" : typeMeta[item].label}
+                  {item === "all" ? (isZh ? "全部" : "All") : typeMeta[item].label}
                 </button>
               ))}
             </div>
           </div>
-          <div className="week-row fixed-week-row">{["一", "二", "三", "四", "五", "六", "日"].map((d, index) => <span key={d} className={index >= 5 ? "weekend" : ""}>周{d}</span>)}</div>
+          <div className="week-row fixed-week-row">{(isZh ? ["周一", "周二", "周三", "周四", "周五", "周六", "周日"] : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]).map((d, index) => <span key={d} className={index >= 5 ? "weekend" : ""}>{d}</span>)}</div>
           <div className="calendar-scroll continuous" ref={calendarScrollRef} onScroll={syncMonthFromScroll}>
             {calendarMonths.map((calendarMonth) => {
               const year = calendarMonth.getFullYear();
@@ -357,14 +376,14 @@ export default function Home() {
                     const dayEvents = filtered.filter((e) => e.date === key);
                     const weekend = date.getDay() === 6 ? "saturday" : date.getDay() === 0 ? "sunday" : "";
                     const nearTerm = key >= weekStartKey && key <= weekEndKey;
-                    const extraHoliday = holidayCalendar[key];
-                    const holiday = extraHoliday ?? (holidays2026[key] ? { label: holidays2026[key], kind: "holiday" as const } : undefined);
+                    const extraHoliday = isZh ? holidayCalendar[key] : undefined;
+                    const holiday = extraHoliday ?? (isZh && holidays2026[key] ? { label: holidays2026[key], kind: "holiday" as const } : undefined);
                     const holidayClass = holiday ? (holiday.kind === "workday" ? "makeup-workday" : holiday.kind === "statutory" ? "statutory-holiday" : "holiday") : "";
                     return <button key={key} className={`day-cell ${weekend} ${holidayClass} ${nearTerm ? "near-term" : ""} ${key === todayKey ? "today" : ""} ${key === selectedDate ? "selected" : ""}`} onClick={() => setSelectedDate(key)} onDoubleClick={() => openCreate(key)} title={holiday?.kind === "statutory" ? "2027 年调休安排待国务院办公厅通知" : undefined}>
                       <span className="day-number">{date.getDate()}</span>
                       {holiday && <span className={`holiday-label ${holiday.kind}`}>{holiday.label}</span>}
                       <div className="day-events">
-                        {dayEvents.slice(0, 2).map((event) => <span key={event.id} className={`event-chip ${typeMeta[event.type].color} ${event.status === "done" ? "completed" : "pending"}`}><i />{event.company}<b>{event.status === "done" ? "已完成" : typeMeta[event.type].short}</b></span>)}
+                        {dayEvents.slice(0, 2).map((event) => <span key={event.id} className={`event-chip ${typeMeta[event.type].color} ${event.status === "done" ? "completed" : "pending"}`}><i />{event.company}<b>{event.status === "done" ? (isZh ? "已完成" : "Done") : typeMeta[event.type].short}</b></span>)}
                         {dayEvents.length > 2 && <span className="more">＋{dayEvents.length - 2}</span>}
                       </div>
                     </button>;
@@ -373,44 +392,44 @@ export default function Home() {
               </section>;
             })}
           </div>
-          <div className="legend">{Object.entries(typeMeta).map(([key, meta]) => <span key={key}><i className={meta.color} />{meta.label}</span>)}<span className="near-term-key"><i />本周</span><small>双击日期可快速添加</small></div>
+          <div className="legend">{Object.entries(typeMeta).map(([key, meta]) => <span key={key}><i className={meta.color} />{meta.label}</span>)}<span className="near-term-key"><i />{isZh ? "本周" : "This week"}</span><small>{isZh ? "双击日期可快速添加" : "Double-click a date to add"}</small></div>
         </div>
 
         <aside className="side-panel">
-          <div className="side-heading"><div><p>{new Date(`${selectedDate}T12:00:00`).toLocaleDateString("zh-CN", { month: "long", day: "numeric", weekday: "short" })}</p><h2>当日安排（{selectedDayTotal}）</h2></div><button onClick={() => openCreate(selectedDate)} aria-label="添加当天安排">＋</button></div>
+          <div className="side-heading"><div><p>{new Date(`${selectedDate}T12:00:00`).toLocaleDateString(isZh ? "zh-CN" : "en-US", { month: "long", day: "numeric", weekday: "short" })}</p><h2>{isZh ? `当日安排（${selectedDayTotal}）` : `Schedule (${selectedDayTotal})`}</h2></div><button onClick={() => openCreate(selectedDate)} aria-label={isZh ? "添加当天安排" : "Add schedule"}>＋</button></div>
           <div className="selected-list">
             {selectedEvents.length ? selectedEvents.map((event) => (
               <div className={`agenda-item ${event.status === "done" ? "completed" : ""}`} key={event.id}>
-                <button className="agenda-open" type="button" onClick={() => openEdit(event)} aria-label={`编辑 ${event.company} ${event.role}`}>
+                <button className="agenda-open" type="button" onClick={() => openEdit(event)} aria-label={`${isZh ? "编辑" : "Edit"} ${event.company} ${event.role}`}>
                   <span className={`agenda-line ${typeMeta[event.type].color}`} />
                   <span className="agenda-copy"><span className="agenda-mainline"><strong>{event.company}</strong><em>{event.role}{event.time && <span className="agenda-time"> · {event.time}</span>}</em></span></span>
                   <span className={`agenda-type ${typeMeta[event.type].color}`}>{typeMeta[event.type].short}</span>
                 </button>
-                {event.sourceUrl && <a className="application-link" href={event.sourceUrl} target="_blank" rel="noreferrer" aria-label={`打开 ${event.company} ${event.role} 的投递链接`}>链接</a>}
-                <button className="completion-check" type="button" aria-label={event.status === "done" ? "标记为未完成" : "标记为已完成"} aria-pressed={event.status === "done"} onClick={() => toggleCompleted(event.id)}><span>✓</span></button>
+                {event.sourceUrl && <a className="application-link" href={event.sourceUrl} target="_blank" rel="noreferrer" aria-label={`${isZh ? "打开投递链接" : "Open application link"}: ${event.company} ${event.role}`}>{isZh ? "链接" : "Link"}</a>}
+                <button className="completion-check" type="button" aria-label={event.status === "done" ? (isZh ? "标记为未完成" : "Mark incomplete") : (isZh ? "标记为已完成" : "Mark complete")} aria-pressed={event.status === "done"} onClick={() => toggleCompleted(event.id)}><span>✓</span></button>
               </div>
-            )) : <div className="empty"><span>☕</span><strong>这一天还没有安排</strong><p>留一点空白，也留一点呼吸。</p></div>}
+            )) : <div className="empty"><span>☕</span><strong>{isZh ? "这一天还没有安排" : "Nothing scheduled yet"}</strong><p>{isZh ? "留一点空白，也留一点呼吸。" : "A little space leaves room to breathe."}</p></div>}
           </div>
 
           <div className="memo-panel">
-            <div className="memo-title"><div><h3>备忘录</h3></div><span>自动保存</span></div>
-            <textarea value={memo} onChange={(e) => setMemo(e.target.value)} aria-label="备忘录" />
-            <div className="memo-footer"><span>{memo.length} 字</span><button className="trash-button" type="button" onClick={() => setConfirmMemoClear(true)} disabled={!memo} aria-label="清空秋招备忘"><i /></button></div>
+            <div className="memo-title"><div><h3>{isZh ? "备忘录" : "Notes"}</h3></div><span>{isZh ? "自动保存" : "Auto-saved"}</span></div>
+            <textarea value={memo} onChange={(e) => setMemo(e.target.value)} aria-label={isZh ? "备忘录" : "Notes"} />
+            <div className="memo-footer"><span>{memo.length} {isZh ? "字" : "characters"}</span><button className="trash-button" type="button" onClick={() => setConfirmMemoClear(true)} disabled={!memo} aria-label={isZh ? "清空秋招备忘" : "Clear notes"}><i /></button></div>
           </div>
 
           <div className="watchlist-panel">
-            <div className="watchlist-title"><div><p>APPLICATION QUEUE</p><h3>待投递公司</h3></div><span>{watchCompanies.length} 家</span></div>
+            <div className="watchlist-title"><div><p>APPLICATION QUEUE</p><h3>{isZh ? "待投递公司" : "Companies to Apply"}</h3></div><span>{watchCompanies.length} {isZh ? "家" : "companies"}</span></div>
             <form className="watchlist-add" onSubmit={addWatchCompany}>
-              <input value={watchCompanyDraft} onChange={(e) => setWatchCompanyDraft(e.target.value)} placeholder="输入公司名称" aria-label="待投递公司名称" />
-              <select value={watchIntent} onChange={(e) => setWatchIntent(e.target.value as IntentLevel)} aria-label="选择意向度"><option value="high">高意向</option><option value="low">低意向</option></select>
-              <button type="submit" disabled={!watchCompanyDraft.trim()} aria-label="添加待投递公司">＋</button>
+              <input value={watchCompanyDraft} onChange={(e) => setWatchCompanyDraft(e.target.value)} placeholder={isZh ? "输入公司名称" : "Enter company name"} aria-label={isZh ? "待投递公司名称" : "Company to apply to"} />
+              <select value={watchIntent} onChange={(e) => setWatchIntent(e.target.value as IntentLevel)} aria-label={isZh ? "选择意向度" : "Choose interest level"}><option value="high">{isZh ? "高意向" : "High interest"}</option><option value="low">{isZh ? "低意向" : "Low interest"}</option></select>
+              <button type="submit" disabled={!watchCompanyDraft.trim()} aria-label={isZh ? "添加待投递公司" : "Add company"}>＋</button>
             </form>
             <div className="intent-groups">
               {(["high", "low"] as const).map((intent) => {
                 const companies = watchCompanies.filter((company) => company.intent === intent);
                 return <section className={`intent-group ${intent}`} key={intent}>
-                  <div className="intent-heading"><span><i />{intent === "high" ? "高意向度" : "低意向度"}</span><b>{companies.length}</b></div>
-                  <div className="intent-list">{companies.length ? companies.map((company) => <div className="intent-item" key={company.id}><strong>{company.name}</strong><button type="button" onClick={() => toggleWatchIntent(company.id)} title={intent === "high" ? "移至低意向" : "移至高意向"}>{intent === "high" ? "降" : "升"}</button><button className="remove" type="button" onClick={() => removeWatchCompany(company.id)} aria-label={`删除 ${company.name}`}>×</button></div>) : <p>暂时没有公司</p>}</div>
+                  <div className="intent-heading"><span><i />{intent === "high" ? (isZh ? "高意向度" : "High interest") : (isZh ? "低意向度" : "Low interest")}</span><b>{companies.length}</b></div>
+                  <div className="intent-list">{companies.length ? companies.map((company) => <div className="intent-item" key={company.id}><strong>{company.name}</strong><button type="button" onClick={() => toggleWatchIntent(company.id)} title={intent === "high" ? (isZh ? "移至低意向" : "Move to low interest") : (isZh ? "移至高意向" : "Move to high interest")}>{intent === "high" ? (isZh ? "降" : "↓") : (isZh ? "升" : "↑")}</button><button className="remove" type="button" onClick={() => removeWatchCompany(company.id)} aria-label={`${isZh ? "删除" : "Remove"} ${company.name}`}>×</button></div>) : <p>{isZh ? "暂时没有公司" : "No companies yet"}</p>}</div>
                 </section>;
               })}
             </div>
@@ -421,16 +440,16 @@ export default function Home() {
       {modalOpen && (
         <div className="modal-backdrop" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) setModalOpen(false); }}>
           <form className="modal" onSubmit={saveEvent} role="dialog" aria-modal="true" aria-labelledby="modal-title">
-            <div className="modal-head"><div>{!editingId && <p>记录新机会</p>}<h2 id="modal-title">{editingId ? "更新进展" : "添加秋招安排"}</h2></div><button type="button" aria-label="关闭弹窗" onClick={() => setModalOpen(false)}>×</button></div>
+            <div className="modal-head"><div>{!editingId && <p>{isZh ? "记录新机会" : "Track a new opportunity"}</p>}<h2 id="modal-title">{editingId ? (isZh ? "更新进展" : "Update progress") : (isZh ? "添加秋招安排" : "Add recruitment event")}</h2></div><button type="button" aria-label={isZh ? "关闭弹窗" : "Close dialog"} onClick={() => setModalOpen(false)}>×</button></div>
             <div className="form-grid">
-              <label><span>公司名称 *</span><input autoFocus required value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} placeholder="例如：腾讯" /></label>
-              <label><span>岗位名称 *</span><input required value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} placeholder="例如：产品经理" /></label>
-              <div className="date-time-group"><label><span>日期 *</span><input type="date" required value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></label><label className="compact-time"><span>具体时间（选填）</span><select aria-label="具体时间" value={form.time ?? ""} onChange={(e) => setForm({ ...form, time: e.target.value })}><option value="">00:00</option>{Array.from({ length: 96 }, (_, index) => { const value = `${pad(Math.floor(index / 4))}:${pad((index % 4) * 15)}`; return <option key={value} value={value}>{value}</option>; })}</select></label></div>
-              <label><span>进度</span><select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as EventType })}>{Object.entries(typeMeta).map(([key, meta]) => <option key={key} value={key}>{meta.label}</option>)}</select></label>
-              <label className="full"><span>招聘 / 投递链接</span><input type="url" value={form.sourceUrl ?? ""} onChange={(e) => setForm({ ...form, sourceUrl: e.target.value })} placeholder="https://…（以后可从记录中直接打开）" /></label>
-              <label className="full"><span>备注</span><textarea rows={5} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder="面试轮次、测评链接、需要准备的内容……" /></label>
+              <label><span>{isZh ? "公司名称 *" : "Company *"}</span><input autoFocus required value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} placeholder={isZh ? "例如：腾讯" : "e.g. Acme"} /></label>
+              <label><span>{isZh ? "岗位名称 *" : "Role *"}</span><input required value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} placeholder={isZh ? "例如：产品经理" : "e.g. Product Manager"} /></label>
+              <div className="date-time-group"><label><span>{isZh ? "日期 *" : "Date *"}</span><input type="date" required value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></label><label className="compact-time"><span>{isZh ? "具体时间（选填）" : "Time (optional)"}</span><select aria-label={isZh ? "具体时间" : "Time"} value={form.time ?? ""} onChange={(e) => setForm({ ...form, time: e.target.value })}><option value="">00:00</option>{Array.from({ length: 96 }, (_, index) => { const value = `${pad(Math.floor(index / 4))}:${pad((index % 4) * 15)}`; return <option key={value} value={value}>{value}</option>; })}</select></label></div>
+              <label><span>{isZh ? "进度" : "Stage"}</span><select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as EventType })}>{Object.entries(typeMeta).map(([key, meta]) => <option key={key} value={key}>{meta.label}</option>)}</select></label>
+              <label className="full"><span>{isZh ? "招聘 / 投递链接" : "Job / Application link"}</span><input type="url" value={form.sourceUrl ?? ""} onChange={(e) => setForm({ ...form, sourceUrl: e.target.value })} placeholder={isZh ? "https://…（以后可从记录中直接打开）" : "https://… (open it later from the event)"} /></label>
+              <label className="full"><span>{isZh ? "备注" : "Notes"}</span><textarea rows={5} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder={isZh ? "面试轮次、测评链接、需要准备的内容……" : "Interview round, assessment link, preparation notes…"} /></label>
             </div>
-            <div className="modal-actions">{editingId && <button type="button" className="danger" onClick={() => setConfirmEventDelete(true)}>删除</button>}<span /><button type="button" className="secondary" onClick={() => setModalOpen(false)}>取消</button><button className="primary" type="submit">保存</button></div>
+            <div className="modal-actions">{editingId && <button type="button" className="danger" onClick={() => setConfirmEventDelete(true)}>{isZh ? "删除" : "Delete"}</button>}<span /><button type="button" className="secondary" onClick={() => setModalOpen(false)}>{isZh ? "取消" : "Cancel"}</button><button className="primary" type="submit">{isZh ? "保存" : "Save"}</button></div>
           </form>
         </div>
       )}
@@ -439,9 +458,9 @@ export default function Home() {
         <div className="confirm-backdrop" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) setConfirmMemoClear(false); }}>
           <div className="confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-description">
             <span className="confirm-icon"><i /></span>
-            <h2 id="confirm-title">确认清空备忘？</h2>
-            <p id="confirm-description">清空后无法恢复，已记录的备忘内容将全部删除。</p>
-            <div><button className="secondary" type="button" onClick={() => setConfirmMemoClear(false)}>取消</button><button className="confirm-danger" type="button" onClick={() => { setMemo(""); setConfirmMemoClear(false); }}>确认清空</button></div>
+            <h2 id="confirm-title">{isZh ? "确认清空备忘？" : "Clear all notes?"}</h2>
+            <p id="confirm-description">{isZh ? "清空后无法恢复，已记录的备忘内容将全部删除。" : "This cannot be undone. All saved notes will be deleted."}</p>
+            <div><button className="secondary" type="button" onClick={() => setConfirmMemoClear(false)}>{isZh ? "取消" : "Cancel"}</button><button className="confirm-danger" type="button" onClick={() => { setMemo(""); setConfirmMemoClear(false); }}>{isZh ? "确认清空" : "Clear notes"}</button></div>
           </div>
         </div>
       )}
@@ -450,9 +469,9 @@ export default function Home() {
         <div className="confirm-backdrop" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) setConfirmEventDelete(false); }}>
           <div className="confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="delete-event-title" aria-describedby="delete-event-description">
             <span className="confirm-icon"><i /></span>
-            <h2 id="delete-event-title">确认删除安排？</h2>
-            <p id="delete-event-description">删除后无法恢复，这条秋招进展将从日历中移除。</p>
-            <div><button className="secondary" type="button" onClick={() => setConfirmEventDelete(false)}>取消</button><button className="confirm-danger" type="button" onClick={removeEvent}>确认删除</button></div>
+            <h2 id="delete-event-title">{isZh ? "确认删除安排？" : "Delete this event?"}</h2>
+            <p id="delete-event-description">{isZh ? "删除后无法恢复，这条秋招进展将从日历中移除。" : "This cannot be undone. The event will be removed from your calendar."}</p>
+            <div><button className="secondary" type="button" onClick={() => setConfirmEventDelete(false)}>{isZh ? "取消" : "Cancel"}</button><button className="confirm-danger" type="button" onClick={removeEvent}>{isZh ? "确认删除" : "Delete"}</button></div>
           </div>
         </div>
       )}
