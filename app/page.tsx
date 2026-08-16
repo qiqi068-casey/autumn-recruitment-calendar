@@ -106,6 +106,8 @@ export default function Home() {
   const [query, setQuery] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [copiedEvent, setCopiedEvent] = useState<RecruitEvent | null>(null);
+  const [isPasting, setIsPasting] = useState(false);
   const [form, setForm] = useState(emptyForm());
   const [hydrated, setHydrated] = useState(false);
   const [memo, setMemo] = useState("");
@@ -239,7 +241,7 @@ export default function Home() {
   const completedWeekInterviews = weekInterviews.filter((event) => event.status === "done");
   const weekRangeLabel = `${weekStartDate.getMonth() + 1}.${weekStartDate.getDate()} — ${weekEndDate.getMonth() + 1}.${weekEndDate.getDate()}`;
   const stats = {
-    applications: new Set(events.filter((event) => event.type === "deadline" && event.status === "done").map((event) => event.company.trim().toLowerCase())).size,
+    applications: new Set(events.map((event) => event.company.trim().toLowerCase()).filter(Boolean)).size,
     weeklyTotal: weekEvents.length,
     weeklyCompleted: completedWeekEvents.length,
     weeklyInterviews: weekInterviews.length,
@@ -250,13 +252,36 @@ export default function Home() {
 
   function openCreate(date = selectedDate) {
     setEditingId(null);
+    setIsPasting(false);
     setForm({ ...emptyForm(), date });
     setModalOpen(true);
   }
 
   function openEdit(event: RecruitEvent) {
     setEditingId(event.id);
+    setIsPasting(false);
     setForm({ company: event.company, role: event.role, date: event.date, time: event.time ?? "", type: event.type, status: event.status, sourceUrl: event.sourceUrl ?? "", note: event.note ?? "" });
+    setModalOpen(true);
+  }
+
+  function copyEvent(event: RecruitEvent) {
+    setCopiedEvent(event);
+  }
+
+  function pasteEventToSelectedDate() {
+    if (!copiedEvent) return;
+    setEditingId(null);
+    setIsPasting(true);
+    setForm({
+      company: copiedEvent.company,
+      role: copiedEvent.role,
+      date: selectedDate,
+      time: "",
+      type: copiedEvent.type,
+      status: "todo",
+      sourceUrl: copiedEvent.sourceUrl ?? "",
+      note: copiedEvent.note ?? "",
+    });
     setModalOpen(true);
   }
 
@@ -268,6 +293,8 @@ export default function Home() {
     } else {
       setEvents((all) => [...all, { ...form, id: crypto.randomUUID() }]);
     }
+    if (isPasting) setCopiedEvent(null);
+    setIsPasting(false);
     setModalOpen(false);
   }
 
@@ -412,7 +439,8 @@ export default function Home() {
         </div>
 
         <aside className="side-panel">
-          <div className="side-heading"><div><p>{new Date(`${selectedDate}T12:00:00`).toLocaleDateString(isZh ? "zh-CN" : "en-US", { month: "long", day: "numeric", weekday: "short" })}</p><h2>{isZh ? `当日安排（${selectedDayTotal}）` : `Schedule (${selectedDayTotal})`}</h2></div><button onClick={() => openCreate(selectedDate)} aria-label={isZh ? "添加当天安排" : "Add schedule"}>＋</button></div>
+          <div className="side-heading"><div><p>{new Date(`${selectedDate}T12:00:00`).toLocaleDateString(isZh ? "zh-CN" : "en-US", { month: "long", day: "numeric", weekday: "short" })}</p><h2>{isZh ? `当日安排（${selectedDayTotal}）` : `Schedule (${selectedDayTotal})`}</h2></div><div className="side-heading-actions">{copiedEvent && <button className="paste-schedule" type="button" onClick={pasteEventToSelectedDate}>{isZh ? "粘贴" : "Paste"}</button>}<button onClick={() => openCreate(selectedDate)} aria-label={isZh ? "添加当天安排" : "Add schedule"}>＋</button></div></div>
+          {copiedEvent && <div className="copy-workflow" role="status"><span><strong>{isZh ? "已复制" : "Copied"}</strong>{copiedEvent.company} · {copiedEvent.role}<small>{isZh ? "选择目标日期，再点击“粘贴”并修改进度。" : "Choose a target date, then paste and update the stage."}</small></span><button type="button" onClick={() => setCopiedEvent(null)} aria-label={isZh ? "取消复制" : "Cancel copy"}>×</button></div>}
           <div className="selected-list">
             {selectedEvents.length ? selectedEvents.map((event) => (
               <div className={`agenda-item ${event.status === "done" ? "completed" : ""}`} key={event.id}>
@@ -422,6 +450,7 @@ export default function Home() {
                   <span className={`agenda-type ${typeMeta[event.type].color}`}>{typeMeta[event.type].short}</span>
                 </button>
                 {event.sourceUrl && <a className="application-link" href={event.sourceUrl} target="_blank" rel="noreferrer" aria-label={`${isZh ? "打开投递链接" : "Open application link"}: ${event.company} ${event.role}`}>{isZh ? "链接" : "Link"}</a>}
+                <button className="copy-action" type="button" onClick={() => copyEvent(event)} aria-label={`${isZh ? "复制安排" : "Copy event"}: ${event.company} ${event.role}`} title={isZh ? "复制到其他日期" : "Copy to another date"}>⧉</button>
                 <button className="completion-check" type="button" aria-label={event.status === "done" ? (isZh ? "标记为未完成" : "Mark incomplete") : (isZh ? "标记为已完成" : "Mark complete")} aria-pressed={event.status === "done"} onClick={() => toggleCompleted(event.id)}><span>✓</span></button>
               </div>
             )) : <div className="empty"><span>☕</span><strong>{isZh ? "这一天还没有安排" : "Nothing scheduled yet"}</strong><p>{isZh ? "留一点空白，也留一点呼吸。" : "A little space leaves room to breathe."}</p></div>}
@@ -456,7 +485,7 @@ export default function Home() {
       {modalOpen && (
         <div className="modal-backdrop" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) setModalOpen(false); }}>
           <form className="modal" onSubmit={saveEvent} role="dialog" aria-modal="true" aria-labelledby="modal-title">
-            <div className="modal-head"><div>{!editingId && <p>{isZh ? "记录新机会" : "Track a new opportunity"}</p>}<h2 id="modal-title">{editingId ? (isZh ? "更新进展" : "Update progress") : (isZh ? "添加秋招安排" : "Add recruitment event")}</h2></div><button type="button" aria-label={isZh ? "关闭弹窗" : "Close dialog"} onClick={() => setModalOpen(false)}>×</button></div>
+            <div className="modal-head"><div>{!editingId && <p>{isPasting ? (isZh ? "复用申请信息" : "Reuse application details") : (isZh ? "记录新机会" : "Track a new opportunity")}</p>}<h2 id="modal-title">{editingId ? (isZh ? "更新进展" : "Update progress") : isPasting ? (isZh ? "粘贴并调整进度" : "Paste and update stage") : (isZh ? "添加秋招安排" : "Add recruitment event")}</h2></div><button type="button" aria-label={isZh ? "关闭弹窗" : "Close dialog"} onClick={() => setModalOpen(false)}>×</button></div>
             <div className="form-grid">
               <label><span>{isZh ? "公司名称 *" : "Company *"}</span><input autoFocus required value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} placeholder={isZh ? "例如：腾讯" : "e.g. Acme"} /></label>
               <label><span>{isZh ? "岗位名称 *" : "Role *"}</span><input required value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} placeholder={isZh ? "例如：产品经理" : "e.g. Product Manager"} /></label>
