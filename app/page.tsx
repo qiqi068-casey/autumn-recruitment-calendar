@@ -241,7 +241,12 @@ export default function Home() {
   const completedWeekInterviews = weekInterviews.filter((event) => event.status === "done");
   const weekRangeLabel = `${weekStartDate.getMonth() + 1}.${weekStartDate.getDate()} — ${weekEndDate.getMonth() + 1}.${weekEndDate.getDate()}`;
   const stats = {
-    applications: new Set(events.map((event) => event.company.trim().toLowerCase()).filter(Boolean)).size,
+    applications: new Set(
+      events
+        .filter((event) => event.type === "deadline" && event.status === "done")
+        .map((event) => event.company.trim().toLowerCase())
+        .filter(Boolean),
+    ).size,
     weeklyTotal: weekEvents.length,
     weeklyCompleted: completedWeekEvents.length,
     weeklyInterviews: weekInterviews.length,
